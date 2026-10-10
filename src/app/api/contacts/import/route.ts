@@ -30,18 +30,30 @@ export async function POST(req: Request) {
       where: eq(whatsappInstances.tenantId, tenantId)
     });
 
-    // LOCAL DEV MOCK: If no instance, create a dummy one just so CRM works
+    // LOCAL DEV MOCK: If no instance, use a placeholder ID so CRM works
     if (!firstInstance && authHeader === "Bearer mock-token") {
-      const mockInstance = {
-        id: "mock_instance_123",
-        tenantId,
-        instanceName: "Local Dev Instance",
-        status: "open",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      await db.insert(whatsappInstances).values(mockInstance).onConflictDoNothing();
-      firstInstance = mockInstance;
+      // Skip instance requirement for local dev
+      const mockInstanceId = "mock_instance_123";
+      
+      const CHUNK_SIZE = 2000;
+      let imported = 0;
+      for (let i = 0; i < newContacts.length; i += CHUNK_SIZE) {
+        const chunk = newContacts.slice(i, i + CHUNK_SIZE);
+        const values = chunk.map(c => ({
+          tenantId,
+          instanceId: mockInstanceId,
+          remoteJid: `${c.phone}@s.whatsapp.net`,
+          pushName: c.pushName || null,
+          metadata: c.variables || {},
+          isSaved: true,
+        }));
+        await db.insert(contacts).values(values).onConflictDoUpdate({
+          target: [contacts.tenantId, contacts.remoteJid],
+          set: { isSaved: true }
+        });
+        imported += chunk.length;
+      }
+      return NextResponse.json({ success: true, count: imported });
     } else if (!firstInstance) {
       return NextResponse.json({ error: "You must connect at least one WhatsApp instance before importing contacts." }, { status: 400 });
     }

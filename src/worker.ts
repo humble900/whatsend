@@ -5,9 +5,6 @@ import { blacklist, messages, campaigns, contacts, whatsappInstances } from "./d
 import { eq, and } from "drizzle-orm";
 import { sendEvolutionMessage } from "./lib/evolution";
 import { parseSpintax, injectVariables, getRandomDelay } from "./lib/spintax";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 const REDIS_QUEUE_URL = process.env.REDIS_QUEUE_URL || "redis://localhost:6379";
 

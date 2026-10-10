@@ -4,11 +4,11 @@ import { db } from "@/db";
 import { messages } from "@/db/schema";
 import { eq, and, asc } from "drizzle-orm";
 
-export async function GET(req: Request, { params }: { params: { jid: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ jid: string }> }) {
   try {
     const authHeader = req.headers.get("Authorization");
     const { tenantId } = await requireAuthAndTenant(authHeader);
-    const jid = params.jid;
+    const { jid } = await params;
 
     const chatMessages = await db.query.messages.findMany({
       where: and(
