@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # 1. Evolution API (Node.js/Baileys WhatsApp Wrapper)
+  evolution-api:
+    image: evolutionapi/evolution-api:v2.0.0
+    container_name: evolution_api
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_URL=http://localhost:8080
+      - DOCKER_ENV=true
+      - LOG_LEVEL=ERROR,WARN,DEBUG,INFO,LOG
+      
+      # Security (Matching your Next.js Core API)
+      - AUTHENTICATION_API_KEY=${EVOLUTION_GLOBAL_API_KEY}
+      
+      # Database State (Connecting to Redis for Session Persistence)
+      - DATABASE_PROVIDER=redis
+      - REDIS_URI=redis://redis:6379/0
+      - REDIS_PREFIX_KEY=evo_
+      
+      # Ensure webhook is sent for all critical events
+      - WEBHOOK_EVENTS_APPLICATION_STARTUP=true
+      - WEBHOOK_EVENTS_QRCODE_UPDATED=true
+      - WEBHOOK_EVENTS_MESSAGES_UPSERT=true
+    depends_on:
+      - redis
+
+  # 2. Redis (For Session State & Cross-Pod Persistence)
+  redis:
+    image: redis:7-alpine
+    container_name: evolution_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - evolution_redis_data:/data
+
+volumes:
+  evolution_redis_data:

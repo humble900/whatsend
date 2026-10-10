@@ -9,15 +9,32 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@clickhouse/client": "^1.24.1",
+    "@radix-ui/react-slot": "^1.4.0",
+    "@supabase/supabase-js": "^2.117.3",
+    "@types/papaparse": "^5.5.2",
+    "bullmq": "^6.3.12",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "drizzle-orm": "^0.45.4",
+    "framer-motion": "^14.0.0",
+    "ioredis": "^6.0.0",
+    "lucide-react": "^1.54.0",
     "next": "16.4.0",
+    "papaparse": "^5.7.0",
+    "postgres": "^3.4.9",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "react-dropzone": "^20.1.2",
+    "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
     "tailwindcss": "^4",
