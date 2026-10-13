@@ -10,14 +10,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(
   supabaseUrl || "https://dummy.supabase.co", 
-  supabaseAnonKey || "dummy-key"
+  supabaseAnonKey || "dummy-key",
+  { global: { fetch: (input, init) => fetch(input, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) }) } }
 );
-
-/**
- * Service Role Client for Server-side Admin Operations (Creating Tenants, Overriding RLS)
- */
-export const getServiceSupabase = () => {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  if (!serviceKey) throw new Error("Missing Supabase Service Role Key");
-  return createClient(supabaseUrl, serviceKey);
-};

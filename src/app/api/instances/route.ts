@@ -1,3 +1,4 @@
+import { authenticationError } from "@/lib/api-error";
 import { NextResponse } from "next/server";
 import { requireAuthAndTenant } from "@/lib/auth";
 import { createEvolutionInstance } from "@/lib/evolution";
@@ -22,16 +23,44 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
+      connected: result.connected,
+      dbId: result.dbId,
       evolutionInstanceId: result.evolutionInstanceId,
       qrcodeBase64: result.qrcode,
       pairingCode: result.pairingCode,
     }, { status: 201 });
 
   } catch (error: any) {
+    const authFailure = authenticationError(error);
+    if (authFailure) return authFailure;
     console.error("Instance Creation Error:", error);
     if (error.message.includes("No available proxies")) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+    return NextResponse.json({ error: error.message || "Connection could not be created." }, { status: 502 });
+  }
+}
+
+import { db } from "@/db";
+import { whatsappInstances } from "@/db/schema";
+import { eq, desc, sql } from "drizzle-orm";
+
+export async function GET(req: Request) {
+  try {
+    const authHeader = req.headers.get("Authorization");
+    const { tenantId } = await requireAuthAndTenant(authHeader);
+
+    const instances = await db.query.whatsappInstances.findMany({
+      where: eq(whatsappInstances.tenantId, tenantId),
+      orderBy: [desc(whatsappInstances.createdAt)]
+    });
+
+    const counts = await db.execute(sql`select instance_id, count(*)::int as count from outbound_messages where tenant_id=${tenantId} and campaign_id is not null and status in ('sent','delivered','read') and sent_at >= date_trunc('day',now()) group by instance_id`);
+    return NextResponse.json({ instances: instances.map(instance => ({ ...instance, messagesSentToday: Number(counts.find(row => row.instance_id === instance.id)?.count || 0) })) }, { status: 200 });
+  } catch (error: any) {
+    const authFailure = authenticationError(error);
+    if (authFailure) return authFailure;
+    console.error("Fetch Instances Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local verification artifacts and customer test data
+/*.png
+/MESSAGING-*-AUDIT.json
+/MESSAGING-ENDPOINT-CONTRACTS.json
+/scripts/
+/test-contacts.csv
+/seed_mock.js
+/migrate_variants.js

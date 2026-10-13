@@ -14,7 +14,7 @@ export interface ProxyConfig {
  * Assigns an available, active proxy to a new WhatsApp instance.
  * To prevent bans, we enforce a strict 1-to-1 proxy mapping.
  */
-export async function getAndAssignProxy(tenantId: string): Promise<ProxyConfig> {
+export async function getAndAssignProxy(tenantId: string): Promise<ProxyConfig | null> {
   // 1. Find an active proxy that is not currently assigned to any WhatsApp instance.
   // In a real high-scale scenario, this requires a distributed lock or Redis Redlock
   // to prevent race conditions where two instances grab the same proxy.
@@ -27,7 +27,7 @@ export async function getAndAssignProxy(tenantId: string): Promise<ProxyConfig> 
   });
 
   if (!availableProxy) {
-    throw new Error("No available proxies found for this tenant. Please add more proxies to your pool.");
+    return null; // Proxies are now optional
   }
 
   return {

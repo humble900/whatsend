@@ -1,0 +1,12 @@
+.env*
+.git
+.next
+node_modules
+/*.png
+MESSAGING-*-AUDIT.json
+MESSAGING-ENDPOINT-CONTRACTS.json
+scripts
+seed_mock.js
+migrate_variants.js
+test-contacts.csv
+*.tsbuildinfo

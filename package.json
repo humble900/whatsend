@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "worker": "tsx src/worker.ts",
+    "test:messaging": "tsx --test tests/messaging.test.ts",
+    "check": "tsc --noEmit"
   },
   "dependencies": {
     "@clickhouse/client": "^1.24.1",
@@ -18,6 +21,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "drizzle-orm": "^0.45.4",
+    "emoji-picker-react": "^5.0.0",
     "framer-motion": "^14.0.0",
     "ioredis": "^6.0.0",
     "lucide-react": "^1.54.0",
@@ -27,7 +31,9 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-dropzone": "^20.1.2",
-    "tailwind-merge": "^3.7.0"
+    "tailwind-merge": "^3.7.0",
+    "tsx": "4.23.15",
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
@@ -39,5 +45,8 @@
     "eslint-config-next": "16.4.0",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=22.16.0"
   }
 }

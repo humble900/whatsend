@@ -1,3 +1,4 @@
+import { authenticationError } from "@/lib/api-error";
 import { NextResponse } from "next/server";
 import { requireAuthAndTenant } from "@/lib/auth";
 import { db } from "@/db";
@@ -34,6 +35,8 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ contacts: mapped });
   } catch (error: any) {
+    const authFailure = authenticationError(error);
+    if (authFailure) return authFailure;
     console.error("Fetch Contacts Error:", error);
     return NextResponse.json({ error: "Failed to fetch contacts" }, { status: 500 });
   }

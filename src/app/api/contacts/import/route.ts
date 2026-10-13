@@ -1,3 +1,4 @@
+import { authenticationError } from "@/lib/api-error";
 import { NextResponse } from "next/server";
 import { requireAuthAndTenant } from "@/lib/auth";
 import { db } from "@/db";
@@ -10,7 +11,8 @@ const importSchema = z.object({
     phone: z.string(),
     pushName: z.string().optional(),
     variables: z.record(z.string(), z.any()).optional()
-  }))
+  })),
+  listName: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -19,7 +21,16 @@ export async function POST(req: Request) {
     const { tenantId } = await requireAuthAndTenant(authHeader);
 
     const body = await req.json();
-    const { contacts: newContacts } = importSchema.parse(body);
+    const parsed = importSchema.safeParse(body);
+    
+    if (!parsed.success) {
+      return NextResponse.json({ 
+        error: "Invalid CSV format or empty file. Please ensure there's a valid 'phone' column.",
+        details: parsed.error.format()
+      }, { status: 400 });
+    }
+    
+    const { contacts: newContacts, listName } = parsed.data;
 
     if (newContacts.length === 0) {
       return NextResponse.json({ error: "No valid contacts found. Please make sure your file has a 'phone' column with valid numbers." }, { status: 400 });
@@ -30,31 +41,7 @@ export async function POST(req: Request) {
       where: eq(whatsappInstances.tenantId, tenantId)
     });
 
-    // LOCAL DEV MOCK: If no instance, use a placeholder ID so CRM works
-    if (!firstInstance && authHeader === "Bearer mock-token") {
-      // Skip instance requirement for local dev
-      const mockInstanceId = "mock_instance_123";
-      
-      const CHUNK_SIZE = 2000;
-      let imported = 0;
-      for (let i = 0; i < newContacts.length; i += CHUNK_SIZE) {
-        const chunk = newContacts.slice(i, i + CHUNK_SIZE);
-        const values = chunk.map(c => ({
-          tenantId,
-          instanceId: mockInstanceId,
-          remoteJid: `${c.phone}@s.whatsapp.net`,
-          pushName: c.pushName || null,
-          metadata: c.variables || {},
-          isSaved: true,
-        }));
-        await db.insert(contacts).values(values).onConflictDoUpdate({
-          target: [contacts.tenantId, contacts.remoteJid],
-          set: { isSaved: true }
-        });
-        imported += chunk.length;
-      }
-      return NextResponse.json({ success: true, count: imported });
-    } else if (!firstInstance) {
+    if (!firstInstance) {
       return NextResponse.json({ error: "You must connect at least one WhatsApp instance before importing contacts." }, { status: 400 });
     }
 
@@ -71,7 +58,7 @@ export async function POST(req: Request) {
         instanceId: firstInstance.id,
         remoteJid: `${c.phone}@s.whatsapp.net`,
         pushName: c.pushName || null,
-        metadata: c.variables || {},
+        metadata: { ...(c.variables || {}), _listName: listName || "Imported List", _importedAt: new Date().toISOString() },
         isSaved: true, // Imported contacts are explicitly saved CRM data
       }));
 
@@ -86,6 +73,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, count: imported });
   } catch (error: any) {
+    const authFailure = authenticationError(error);
+    if (authFailure) return authFailure;
     console.error("Bulk Import Error:", error);
     return NextResponse.json({ error: "Failed to import contacts." }, { status: 500 });
   }

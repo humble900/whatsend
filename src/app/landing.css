@@ -1,0 +1,627 @@
+.ws-page{--ink:#14251d;
+  --green:#146c43;
+  --lime:#c8f582;
+  --line:#dde4da;
+  background:#fafbf7;
+  color:var(--ink);
+  font-family:var(--font-inter),sans-serif}
+.ws-page svg{flex-shrink:0}
+.ws-skip{position:absolute;
+  left:16px;
+  top:-60px;
+  z-index:100;
+  background:var(--ink);
+  color:white;
+  padding:12px}
+.ws-skip:focus{top:12px}
+.ws-header{border-bottom:1px solid var(--line);
+  background:#fafbf7}
+.ws-nav{max-width:1240px;
+  margin:auto;
+  padding:23px 36px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:25px}
+.ws-brand{display:inline-flex;
+  align-items:center;
+  font-size:25px;
+  font-weight:800;
+  letter-spacing:-1.1px;
+  color:var(--ink)}
+.ws-brandIcon{display:grid;
+  place-items:center;
+  width:33px;
+  height:33px;
+  margin-right:9px;
+  border-radius:10px;
+  background:var(--green);
+  color:var(--lime);
+  transform:rotate(-5deg)}
+.ws-brandDot{color:var(--green)}
+.ws-navLinks,.ws-navActions{display:flex;
+  align-items:center;
+  gap:30px}
+.ws-navLinks,.ws-login{font-size:13px;
+  font-weight:500}
+.ws-navLinks a:hover,.ws-login:hover{color:var(--green)}
+.ws-smallCta,.ws-primary{display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:22px;
+  background:var(--green);
+  color:white;
+  border-radius:7px;
+  font-weight:600;
+  transition:background .2s,transform .2s}
+.ws-smallCta{padding:12px 17px;
+  font-size:13px}
+.ws-primary{padding:17px 23px;
+  font-size:14px}
+.ws-primary:hover,.ws-smallCta:hover{background:#0a5130;
+  transform:translateY(-2px)}
+.ws-hero{max-width:1240px;
+  margin:auto;
+  padding:82px 36px 0;
+  display:grid;
+  grid-template-columns:1.06fr 1fr;
+  gap:40px;
+  align-items:center}
+.ws-eyebrow{font-size:10px;
+  font-weight:700;
+  letter-spacing:1.8px;
+  color:var(--green);
+  display:flex;
+  align-items:center;
+  gap:8px}
+.ws-eyebrow>span{width:6px;
+  height:6px;
+  border-radius:50%;
+  background:var(--green)}
+.ws-hero h1{font-size:clamp(43px,4.5vw,64px);
+  line-height:1.08;
+  letter-spacing:-3.4px;
+  font-weight:600;
+  margin:23px 0}
+.ws-hero h1>span{color:var(--green)}
+.ws-heroText{font-size:16px;
+  line-height:1.85;
+  color:#58645a;
+  max-width:470px}
+.ws-heroActions{display:flex;
+  align-items:center;
+  gap:25px;
+  margin-top:30px}
+.ws-secondary{display:inline-flex;
+  gap:12px;
+  align-items:center;
+  font-size:13px;
+  font-weight:600;
+  color:var(--ink)}
+.ws-secondary:hover{color:var(--green)}
+.ws-heroChecks{display:flex;
+  gap:17px;
+  margin-top:24px;
+  font-size:10px;
+  color:#5c675e;
+  flex-wrap:wrap}
+.ws-heroChecks span{display:flex;
+  align-items:center;
+  gap:5px}
+.ws-heroChecks svg{color:var(--green)}
+.ws-heroFoot{grid-column:1/-1;
+  display:flex;
+  justify-content:space-between;
+  border-top:1px solid var(--line);
+  padding:25px 0;
+  margin-top:34px;
+  font-size:10px;
+  letter-spacing:1px;
+  color:#6d776b}
+.ws-heroFoot span:last-child{letter-spacing:0}
+.ws-previewWrap{min-width:0;
+  position:relative}
+.ws-previewTop{display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:13px;
+  font-size:8px;
+  color:#6a756b;
+  letter-spacing:1px}
+.ws-previewTop>span{display:flex;
+  align-items:center;
+  gap:7px}
+.ws-previewTop>span:last-child{letter-spacing:0;
+  font-size:9px}
+.ws-liveDot,.ws-ready>span{width:5px;
+  height:5px;
+  background:#238854;
+  border-radius:50%}
+.ws-preview{display:flex;
+  border:1px solid #d7e0d1;
+  border-radius:12px;
+  background:white;
+  box-shadow:0 20px 50px -25px #365a3445;
+  overflow:hidden;
+  transform:rotate(-1deg)}
+.ws-previewSidebar{background:#f6f8f3;
+  width:49px;
+  border-right:1px solid #e6eae2;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:25px;
+  padding:18px 0;
+  color:#8a9487;
+  flex-shrink:0}
+.ws-sidebarLogo{color:var(--green);
+  margin-bottom:15px}
+.ws-sidebarActive{background:#e0efda;
+  color:var(--green);
+  padding:9px;
+  border-radius:6px}
+.ws-sidebarAvatar{margin-top:auto;
+  width:26px;
+  height:26px;
+  border-radius:50%;
+  background:#e5e9de;
+  color:#52634e;
+  font-size:8px;
+  display:grid;
+  place-items:center}
+.ws-previewBody{flex:1;
+  min-width:0}
+.ws-previewTitle{padding:21px 22px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  color:#687367}
+.ws-previewTitle span{font-size:9px}
+.ws-previewTitle h3{font-size:19px;
+  font-weight:600;
+  letter-spacing:-.6px;
+  color:var(--ink);
+  margin-top:4px}
+.ws-demoTabs{display:flex;
+  margin:0 22px 14px;
+  background:#f3f5ef;
+  padding:4px;
+  border-radius:6px;
+  gap:2px}
+.ws-demoTabs button{flex:1;
+  padding:7px 3px;
+  border-radius:4px;
+  font-size:9px;
+  color:#6a7367;
+  cursor:pointer;
+  white-space:nowrap}
+.ws-demoTabs button:hover{color:var(--green)}
+.ws-demoTabs .ws-activeTab{background:white;
+  box-shadow:0 1px 4px #14251d12;
+  color:var(--ink);
+  font-weight:600}
+.ws-audience{display:flex;
+  gap:10px;
+  align-items:center;
+  margin:0 22px 14px;
+  padding:10px;
+  border:1px solid #e6eae2;
+  border-radius:6px}
+.ws-audienceIcon{background:#f1f6e9;
+  color:var(--green);
+  padding:7px;
+  border-radius:5px}
+.ws-audience>div{display:flex;
+  flex-direction:column;
+  gap:2px;
+  flex:1}
+.ws-audience strong{font-size:9px;
+  font-weight:600}
+.ws-audience>div>span{font-size:8px;
+  color:#7e8778}
+.ws-audience>svg{color:var(--green)}
+.ws-chat{padding:13px 25px 20px;
+  background:#edf1e8;
+  background-image:radial-gradient(#bfcbb547 .7px,transparent .7px);
+  background-size:14px 14px;
+  min-height:295px}
+.ws-chatDate{text-align:center;
+  font-size:8px;
+  color:#798271;
+  margin-bottom:12px}
+.ws-message{max-width:260px;
+  width:88%;
+  margin-left:auto;
+  background:#d9efc9;
+  padding:5px;
+  border-radius:8px 0 8px 8px;
+  box-shadow:0 2px 3px #14251d08}
+.ws-messageArtwork{background:#164c36;
+  color:#e8f7d4;
+  min-height:126px;
+  padding:13px 15px;
+  border-radius:5px;
+  position:relative;
+  overflow:hidden}
+.ws-messageArtwork>span{font-size:6px;
+  letter-spacing:1.5px}
+.ws-messageArtwork>svg{position:absolute;
+  right:10px;
+  top:25px;
+  color:#c8f582}
+.ws-messageArtwork strong{display:block;
+  max-width:155px;
+  font-size:24px;
+  line-height:1.1;
+  font-weight:500;
+  letter-spacing:-.8px;
+  margin:10px 0}
+.ws-messageArtwork small{display:block;
+  font-size:6px;
+  color:#c1d7b7}
+.ws-message p{padding:9px 8px 0;
+  font-size:10px;
+  line-height:1.65}
+.ws-messageTime{display:flex;
+  justify-content:flex-end;
+  gap:4px;
+  align-items:center;
+  font-size:7px;
+  color:#657860;
+  padding:3px 5px}
+.ws-messageTime svg{color:#3c91a1}
+.ws-reply{width:78%;
+  background:white;
+  padding:10px 12px;
+  border-radius:0 7px 7px 7px;
+  font-size:10px;
+  line-height:1.6;
+  margin-top:12px}
+.ws-reply>span{display:block;
+  text-align:right;
+  font-size:7px;
+  color:#9a9f94}
+.ws-previewBottom{padding:13px 15px;
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  font-size:8px;
+  color:#5f6f58}
+.ws-previewBottom>span{display:flex;
+  align-items:center;
+  gap:5px}
+.ws-ready{white-space:nowrap}
+.ws-previewNote{display:flex;
+  justify-content:space-between;
+  gap:10px;
+  font-size:8px;
+  color:#7c8874;
+  margin-top:16px}
+.ws-previewNote>span:first-child{display:flex;
+  align-items:center;
+  gap:5px;
+  color:var(--green)}
+.ws-useCases{background:#f0f3eb;
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  padding:26px 36px;
+  text-align:center}
+.ws-useCases p{font-size:10px;
+  color:#73806c;
+  margin-bottom:17px}
+.ws-useCases>div{display:flex;
+  justify-content:center;
+  flex-wrap:wrap;
+  gap:65px;
+  font-size:16px;
+  font-weight:500;
+  letter-spacing:-.5px}
+.ws-section{max-width:1240px;
+  margin:auto;
+  padding:84px 36px;
+  scroll-margin-top:25px}
+.ws-sectionHeading{display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:35px;
+  margin-bottom:38px}
+.ws-section h2,.ws-finalCta h2{font-size:43px;
+  font-weight:500;
+  line-height:1.15;
+  letter-spacing:-1.9px;
+  margin-top:17px}
+.ws-sectionHeading>p{font-size:14px;
+  line-height:1.8;
+  color:#657060}
+.ws-featureGrid{display:grid;
+  grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line)}
+.ws-feature{padding:28px 22px 31px;
+  border-right:1px solid var(--line)}
+.ws-feature:first-child{padding-left:0}
+.ws-feature:last-child{border-right:0;
+  padding-right:0}
+.ws-featureTop{display:flex;
+  align-items:center;
+  justify-content:space-between;
+  color:var(--green);
+  margin-bottom:28px}
+.ws-featureTop>span{font-size:10px;
+  color:#8d9885}
+.ws-feature h3,.ws-steps h3,.ws-inboxBanner h3{font-size:17px;
+  font-weight:600;
+  letter-spacing:-.5px;
+  margin-bottom:12px}
+.ws-feature p,.ws-steps p{font-size:13px;
+  line-height:1.85;
+  color:#667060}
+.ws-inboxBanner{margin-top:29px;
+  padding:25px;
+  background:#eaf1e3;
+  display:flex;
+  align-items:center;
+  gap:22px;
+  border-radius:8px}
+.ws-inboxIcon{color:var(--green)}
+.ws-inboxBanner>div:nth-child(2){flex:1}
+.ws-inboxBanner h3{margin-bottom:5px}
+.ws-inboxBanner p{font-size:12px;
+  line-height:1.8;
+  color:#67735e;
+  max-width:580px}
+.ws-inboxBanner>a{font-size:11px;
+  font-weight:600;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  white-space:nowrap;
+  color:var(--green)}
+.ws-workflow{background:#123d2c;
+  color:#f2f5eb;
+  scroll-margin-top:0}
+.ws-workflow .ws-eyebrow{color:var(--lime)}
+.ws-workflow .ws-secondary{color:var(--lime)}
+.ws-steps{display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:50px}
+.ws-stepNumber{border-top:1px solid #ffffff25;
+  padding-top:20px;
+  margin-bottom:25px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  color:var(--lime)}
+.ws-stepNumber span{font-size:12px}
+.ws-steps p{color:#b6c9b8;
+  font-size:13px}
+.ws-steps h3{font-size:18px}
+.ws-faq{display:grid;
+  grid-template-columns:1fr 1.35fr;
+  gap:70px}
+.ws-faqIntro{margin-top:20px;
+  font-size:13px;
+  color:#75806c}
+.ws-questions{border-top:1px solid var(--line)}
+.ws-questions details{border-bottom:1px solid var(--line)}
+.ws-questions summary{list-style:none;
+  cursor:pointer;
+  padding:22px 0;
+  display:flex;
+  justify-content:space-between;
+  gap:20px;
+  font-size:14px;
+  font-weight:500}
+.ws-questions summary::-webkit-details-marker{display:none}
+.ws-questions summary>svg{color:#819075;
+  transition:transform .2s}
+.ws-questions details[open] summary>svg{transform:rotate(180deg)}
+.ws-questions details>p{font-size:13px;
+  line-height:1.9;
+  color:#62705a;
+  padding:0 30px 22px 0}
+.ws-finalCta{max-width:1168px;
+  margin:0 auto 60px;
+  background:#d3f5aa;
+  border-radius:12px;
+  padding:53px 55px;
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:30px}
+.ws-finalCta h2{font-size:42px;
+  margin-bottom:17px}
+.ws-finalCta p:not(.ws-eyebrow){font-size:14px;
+  color:#526c42;
+  margin-bottom:26px}
+.ws-ctaArt{width:225px;
+  height:210px;
+  position:relative;
+  flex-shrink:0}
+.ws-ctaArt>svg:first-child{width:170px;
+  height:170px;
+  stroke-width:.9;
+  color:#448043;
+  transform:rotate(-12deg);
+  position:absolute;
+  top:0;
+  left:0}
+.ws-ctaArt>svg:last-child{width:86px;
+  height:86px;
+  color:var(--green);
+  fill:#d3f5aa;
+  stroke-width:1.2;
+  position:absolute;
+  bottom:0;
+  right:5px;
+  transform:rotate(10deg)}
+.ws-footer{max-width:1240px;
+  margin:auto;
+  padding:35px 36px 40px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:30px;
+  border-top:1px solid var(--line)}
+.ws-footer .ws-brand{font-size:22px}
+.ws-footer .ws-brandIcon{width:29px;
+  height:29px}
+.ws-footer p{font-size:10px;
+  color:#79836f;
+  margin-top:12px}
+.ws-footer nav{display:flex;
+  gap:25px;
+  font-size:11px;
+  color:#5d6d52}
+.ws-footer>p{margin:0}
+.ws-page a:focus-visible,.ws-page button:focus-visible,.ws-page summary:focus-visible{outline:3px solid #378a54;
+  outline-offset:5px}
+
+@media(max-width:1000px){.ws-nav,.ws-hero,.ws-section,.ws-footer{padding-left:25px;
+  padding-right:25px}
+.ws-hero{gap:24px}
+.ws-hero h1{font-size:47px;
+  letter-spacing:-2.4px}
+.ws-heroText{font-size:14px}
+.ws-heroChecks{gap:10px;
+  font-size:9px}
+.ws-heroActions{gap:18px}
+.ws-previewBottom .ws-ready{display:none}
+.ws-inboxBanner{flex-wrap:wrap}
+.ws-inboxBanner>a{margin-left:52px}
+.ws-feature{padding:25px 17px}
+.ws-feature h3{font-size:15px}
+.ws-useCases>div{gap:35px}
+.ws-finalCta{margin-inline:25px}
+.ws-faq{gap:40px}
+.ws-steps{gap:30px}
+}
+
+@media(max-width:760px){.ws-nav{padding:17px 20px}
+.ws-brand{font-size:23px}
+.ws-navLinks{display:none}
+.ws-navActions{gap:17px}
+.ws-login{font-size:12px}
+.ws-smallCta{padding:10px 12px;
+  font-size:11px;
+  gap:8px}
+.ws-hero{grid-template-columns:1fr;
+  padding:52px 22px 0;
+  gap:42px}
+.ws-hero h1{font-size:clamp(34px,8.5vw,62px);
+  letter-spacing:-2.5px}
+.ws-heroText{max-width:540px;
+  font-size:15px}
+.ws-heroChecks{font-size:10px;
+  gap:15px}
+.ws-heroActions{gap:22px}
+.ws-heroFoot{margin-top:0;
+  padding:22px 0;
+  gap:15px;
+  align-items:center}
+.ws-heroFoot>span{font-size:8px}
+.ws-heroFoot>span:last-child{text-align:right;
+  max-width:160px}
+.ws-previewWrap{max-width:520px;
+  width:100%;
+  margin:auto}
+.ws-preview{transform:none}
+.ws-previewTop{font-size:8px}
+.ws-message{max-width:290px}
+.ws-chat{min-height:295px}
+.ws-previewBottom .ws-ready{display:flex}
+.ws-useCases{padding:24px 22px}
+.ws-useCases>div{gap:14px 27px;
+  font-size:13px}
+.ws-section{padding:56px 22px}
+.ws-sectionHeading{display:block;
+  margin-bottom:30px}
+.ws-section h2,.ws-finalCta h2{font-size:36px}
+.ws-sectionHeading>p,.ws-sectionHeading>.ws-secondary{margin-top:20px}
+.ws-featureGrid{grid-template-columns:repeat(2,1fr)}
+.ws-feature,.ws-feature:first-child,.ws-feature:last-child{padding:25px 17px}
+.ws-feature:nth-child(2){border-right:0}
+.ws-feature:nth-child(-n+2){border-bottom:1px solid var(--line)}
+.ws-feature:nth-child(odd){padding-left:0}
+.ws-feature h3{font-size:16px}
+.ws-featureTop{margin-bottom:20px}
+.ws-feature p{font-size:12px}
+.ws-inboxBanner{padding:20px;
+  gap:15px}
+.ws-inboxBanner>div:nth-child(2){flex-basis:calc(100% - 50px)}
+.ws-inboxBanner>a{margin-left:45px;
+  font-size:10px;
+  white-space:normal}
+.ws-steps{grid-template-columns:1fr;
+  gap:30px}
+.ws-stepNumber{margin-bottom:15px}
+.ws-steps p{max-width:430px}
+.ws-faq{grid-template-columns:1fr;
+  gap:30px}
+.ws-questions summary{font-size:13px}
+.ws-finalCta{margin:0 22px 35px;
+  padding:34px 25px}
+.ws-finalCta h2{font-size:32px}
+.ws-ctaArt{display:none}
+.ws-finalCta .ws-eyebrow{font-size:8px}
+.ws-footer{padding:28px 22px;
+  flex-wrap:wrap;
+  gap:25px}
+.ws-footer nav{gap:21px}
+.ws-footer>p{width:100%}
+}
+
+@media(prefers-reduced-motion:reduce){.ws-primary,.ws-smallCta,.ws-questions summary>svg{transition:none}
+}
+
+
+
+
+/* Plain branding and sales-focused landing page. */
+.ws-brand { gap: 10px; font-size: 24px; letter-spacing: -0.8px; font-weight: 700; }
+.ws-ogLogo { position: relative; display: block; overflow: hidden; width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0; }
+.ws-ogLogo img { position: absolute; width: 440px; height: auto; max-width: none; left: -23.3px; top: -21.8px; }
+.ws-headerStart { color: var(--green); font-size: 13px; font-weight: 600; }
+.ws-headerStart:hover { text-decoration: underline; }
+.ws-hero { padding-top: 76px; padding-bottom: 76px; gap: 55px; }
+.ws-hero h1 { margin-top: 0; font-size: clamp(42px, 4.2vw, 59px); line-height: 1.12; letter-spacing: -2.7px; }
+.ws-preview { transform: none; box-shadow: none; border-radius: 9px; }
+.ws-previewTitle { padding: 24px 24px 18px; }
+.ws-previewTitle span { font-size: 12px; }
+.ws-previewTitle h3 { font-size: 22px; margin-top: 7px; }
+.ws-demoTabs { margin: 0 24px 18px; background: transparent; padding: 0; border-radius: 0; gap: 18px; border-bottom: 1px solid var(--line); }
+.ws-demoTabs button { flex: initial; padding: 9px 0; font-size: 12px; border-radius: 0; }
+.ws-demoTabs .ws-activeTab { box-shadow: none; background: transparent; color: var(--green); border-bottom: 2px solid var(--green); }
+.ws-demoAudience { padding: 0 24px 18px; font-size: 12px; color: #5c675e; }
+.ws-chat { background: #f0f3ed; background-image: none; padding: 24px; min-height: 310px; }
+.ws-message { max-width: 310px; margin-top: 16px; padding: 9px 12px; box-shadow: none; }
+.ws-message:first-child { margin-top: 0; }
+.ws-message p { padding: 0; font-size: 13px; line-height: 1.7; }
+.ws-messageTime { font-size: 9px; margin-top: 6px; padding: 0; }
+.ws-reply { font-size: 13px; padding: 13px 15px; line-height: 1.7; }
+.ws-reply > span { font-size: 9px; }
+.ws-demoCaption { margin-top: 12px; font-size: 11px; color: #687367; }
+.ws-section h2 { margin-top: 0; font-size: 39px; }
+.ws-inboxBanner > div { flex: 1; }
+.ws-inboxBanner > a { margin-left: 0; }
+.ws-finalCta { background: #e6efdf; border-radius: 6px; }
+.ws-finalCta h2 { margin-top: 0; }
+.ws-primary:hover { transform: none; }
+@media(max-width:760px) {
+  .ws-brand { font-size: 21px; gap: 8px; }
+  .ws-ogLogo { width: 32px; height: 32px; border-radius: 8px; }
+  .ws-ogLogo img { width: 391px; left: -20.7px; top: -19.4px; }
+  .ws-navActions { gap: 16px; }
+  .ws-headerStart { font-size: 12px; }
+  .ws-hero { padding: 48px 22px; gap: 36px; }
+  .ws-hero h1 { font-size: clamp(36px, 9vw, 55px); letter-spacing: -1.8px; }
+  .ws-section h2 { font-size: 32px; }
+  .ws-chat { padding: 18px; }
+  .ws-demoTabs { gap: 15px; margin-inline: 18px; }
+  .ws-demoTabs button { font-size: 11px; }
+  .ws-demoAudience { padding-inline: 18px; font-size: 11px; }
+  .ws-inboxBanner > div { flex-basis: 100%; }
+  .ws-inboxBanner > a { margin-left: 0; }
+}

@@ -1,28 +1,25 @@
-import { Queue, Worker, QueueEvents } from "bullmq";
+import { Queue } from "bullmq";
 import Redis from "ioredis";
-
-// Use an external Redis cluster (Upstash/Railway) for job queues. 
-// Do NOT use the same Redis used by Evolution API to prevent cache eviction cross-contamination.
-const REDIS_QUEUE_URL = process.env.REDIS_QUEUE_URL!;
-
-export const redisConnection = new Redis(REDIS_QUEUE_URL, {
-  maxRetriesPerRequest: null,
-});
-
-// The main high-throughput queue for sending WhatsApp messages
-export const campaignQueue = new Queue("whatsapp-campaign-dispatch", {
-  connection: redisConnection,
-  defaultJobOptions: {
-    attempts: 3, // Retry if network fails
-    backoff: {
-      type: "exponential",
-      delay: 5000,
-    },
-    removeOnComplete: true, // Keep Redis memory clean
-  },
-});
-
-// Events listener for tracking dashboard stats
-export const campaignQueueEvents = new QueueEvents("whatsapp-campaign-dispatch", {
-  connection: redisConnection,
-});
+import { db } from "@/db";
+import { campaignWorkerHealth } from "@/db/schema";
+import { sql } from "drizzle-orm";
+export const CAMPAIGN_QUEUE = "whatsapp-campaign-dispatch";
+export function createQueueRedis() {
+  const url = process.env.REDIS_QUEUE_URL || process.env.REDIS_URL;
+  if (!url) throw new Error("Campaign queue is not configured. Direct replies remain available.");
+  const connection = new Redis(url, { maxRetriesPerRequest: null, connectTimeout: 10000, retryStrategy: attempts => Math.min(1000 * attempts, 10000) });
+  connection.on("error", () => console.error("Campaign Redis connection unavailable"));
+  return connection;
+}
+let connection: Redis | undefined;
+let queue: Queue | undefined;
+export function getCampaignQueue() {
+  connection ||= createQueueRedis();
+  queue ||= new Queue(CAMPAIGN_QUEUE, { connection, defaultJobOptions: { attempts: 1, removeOnComplete: { count: 1000 }, removeOnFail: { count: 1000 } } });
+  return queue;
+}
+export async function assertCampaignWorkerAvailable() {
+  const heartbeat = await db.query.campaignWorkerHealth.findFirst({ where: sql`${campaignWorkerHealth.lastSeenAt} > now() - interval '30 seconds'` });
+  if (!heartbeat) throw new Error("Campaign worker is offline. Start the worker before launching. Direct replies remain available.");
+}
+export async function enqueueOutbound(id: string) { return getCampaignQueue().add("dispatch-message", { outboundId: id }, { jobId: id }); }

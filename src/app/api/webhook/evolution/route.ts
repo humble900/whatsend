@@ -1,121 +1,43 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { db } from "@/db";
-import { blacklist, whatsappInstances, messages, contacts } from "@/db/schema";
+import { contacts, whatsappInstances } from "@/db/schema";
+import { saveContactPhoto } from "@/lib/contact-photo";
 import { eq } from "drizzle-orm";
+import { eventItems, phoneJid, receiptStatus } from "@/lib/evolution-events";
+import { receiveEvolutionMessage } from "@/lib/inbound-message";
+import { storeReceipt } from "@/lib/store-message";
 
 export async function POST(req: Request) {
+  const expected = process.env.EVOLUTION_WEBHOOK_SECRET;
+  if (!expected) return NextResponse.json({ error: "Webhook is not configured." }, { status: 503 });
+  const supplied = req.headers.get("x-whatsend-webhook-secret") || "";
+  if (Buffer.byteLength(supplied) !== Buffer.byteLength(expected) || !timingSafeEqual(Buffer.from(supplied), Buffer.from(expected))) return NextResponse.json({ error: "Unauthorized webhook." }, { status: 401 });
   try {
     const payload = await req.json();
-
-    // The event type from Evolution API
-    const event = payload.event;
-    const instanceId = payload.instance; // Maps to our evolutionInstanceId
-
-    // 1. Identify Tenant Context
-    const instanceRecord = await db.query.whatsappInstances.findFirst({
-      where: eq(whatsappInstances.evolutionInstanceId, instanceId),
-      columns: { id: true, tenantId: true }
-    });
-
-    if (!instanceRecord) {
-      return NextResponse.json({ error: "Unknown Instance" }, { status: 404 });
-    }
-
-    // 2. Handle Connection State Changes
-    if (event === "connection.update") {
-      const state = payload.data?.state;
-      if (state === "open") {
-        await db.update(whatsappInstances)
-          .set({ status: "connected" })
-          .where(eq(whatsappInstances.evolutionInstanceId, instanceId));
-      } else if (state === "close" || state === "refused") {
-        const statusCode = payload.data?.reason?.statusCode || payload.data?.statusReason;
-        const newStatus = statusCode === 403 ? "banned" : "disconnected";
-        
-        await db.update(whatsappInstances)
-          .set({ status: newStatus })
-          .where(eq(whatsappInstances.evolutionInstanceId, instanceId));
+    if (typeof payload.instance !== "string" || typeof payload.event !== "string") return NextResponse.json({ error: "Invalid webhook." }, { status: 400 });
+    const instance = await db.query.whatsappInstances.findFirst({ where: eq(whatsappInstances.evolutionInstanceId, payload.instance) });
+    if (!instance) return NextResponse.json({ ignored: "unknown_instance" });
+    const event = payload.event.replace(/[.-]/g, "_").toUpperCase();
+    if (event === "CONNECTION_UPDATE") {
+      const state = payload.data?.state === "refused" ? "close" : payload.data?.state;
+      if (["open", "close", "connecting"].includes(state)) await db.update(whatsappInstances).set({ status: state === "open" ? "connected" : state === "connecting" ? "connecting" : "disconnected", ...(payload.data?.wuid ? { phoneNumber: String(payload.data.wuid).split("@")[0].split(":")[0] } : {}) }).where(eq(whatsappInstances.id, instance.id));
+    } else if (["MESSAGES_UPSERT", "SEND_MESSAGE"].includes(event)) {
+      for (const msg of eventItems(payload.data)) await receiveEvolutionMessage(instance.tenantId, instance.id, msg);
+    } else if (event === "MESSAGES_UPDATE") {
+      for (const update of eventItems(payload.data)) {
+        const status = receiptStatus(update); const id = update.key?.id || update.keyId;
+        if (status && typeof id === "string") await storeReceipt(instance.tenantId, instance.id, id, status);
       }
-      return NextResponse.json({ success: true });
-    }
-
-    // 3. Handle Messages, Contacts & Auto-Blacklist (Opt-out logic)
-    if (event === "messages.upsert") {
-      const msgList = payload.data?.messages || [];
-      for (const msg of msgList) {
-        const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
-        const phone = msg.key.remoteJid?.replace("@s.whatsapp.net", "");
-        const isFromMe = msg.key.fromMe || false;
-        const messageId = msg.key.id;
-        const pushName = msg.pushName || undefined;
-        
-        if (!phone) continue;
-
-        // Persist contact for CRM & Anti-Ban Sync
-        await db.insert(contacts).values({
-          tenantId: instanceRecord.tenantId,
-          instanceId: instanceRecord.id,
-          remoteJid: phone,
-          pushName: pushName,
-        }).onConflictDoUpdate({
-          target: [contacts.tenantId, contacts.remoteJid], // Assuming a composite unique index on these, wait, I didn't add a unique constraint, I should just do nothing or use a unique constraint. Since Drizzle needs a unique index for onConflict, let's just do nothing for now unless we alter the schema.
-          set: pushName ? { pushName } : {},
-        }).catch(() => {
-          // If no unique constraint, fallback to ignoring duplicate contact errors
-        });
-
-        // Persist message to Inbox
-        await db.insert(messages).values({
-          tenantId: instanceRecord.tenantId,
-          instanceId: instanceRecord.id,
-          remoteJid: phone,
-          isFromMe: isFromMe,
-          messageText: text,
-          evolutionMessageId: messageId,
-          status: isFromMe ? "sent" : "received",
-        }).onConflictDoNothing();
-
-        // Process Opt-out
-        if (!isFromMe) {
-          const cleanText = text.trim().toLowerCase();
-          if (cleanText === "stop" || cleanText === "unsubscribe" || cleanText === "cancel") {
-            await db.insert(blacklist).values({
-              tenantId: instanceRecord.tenantId,
-              phoneNumber: phone,
-              reason: `Auto-Opt Out: "${cleanText}"`,
-            }).onConflictDoNothing(); // Prevent duplicates
-            console.log(`[Blacklist] Number ${phone} opted out for Tenant ${instanceRecord.tenantId}`);
-          }
-        }
+    } else if (["CONTACTS_UPSERT", "CONTACTS_UPDATE"].includes(event)) {
+      for (const contact of eventItems(payload.data)) {
+        const jid = phoneJid({ remoteJid: contact.remoteJid || contact.id });
+        if (!jid) continue;
+        const pushName = contact.pushName || contact.notify;
+        if(Object.prototype.hasOwnProperty.call(contact,"profilePicUrl"))await saveContactPhoto(instance.tenantId,instance.id,jid,contact.profilePicUrl);
+        await db.insert(contacts).values({ tenantId: instance.tenantId, instanceId: instance.id, remoteJid: jid, pushName: typeof pushName === "string" ? pushName.slice(0,255) : null }).onConflictDoUpdate({ target: [contacts.tenantId, contacts.remoteJid], set: { remoteJid: jid, ...(typeof pushName === "string" ? { pushName: pushName.slice(0,255) } : {}) } });
       }
     }
-
-    // 4. Analytics & Delivery Receipts (Webhooks)
-    if (event === "messages.update") {
-      const updates = payload.data || [];
-      for (const update of updates) {
-        const messageId = update.key?.id;
-        let statusText: "sent" | "delivered" | "read" | "failed" | null = null;
-        
-        switch (update.update?.status) {
-          case 2: statusText = "sent"; break;
-          case 3: statusText = "delivered"; break;
-          case 4: statusText = "read"; break;
-        }
-
-        if (statusText && messageId) {
-          await db.update(messages)
-            .set({ status: statusText })
-            .where(eq(messages.evolutionMessageId, messageId));
-        }
-      }
-    }
-
     return NextResponse.json({ success: true });
-
-  } catch (error: any) {
-    console.error("Webhook Processing Error:", error);
-    // Always return 200 to webhooks to prevent Evolution API from infinitely retrying
-    return NextResponse.json({ success: false, error: "Internal Error" }, { status: 200 });
-  }
+  } catch { console.error("Evolution webhook persistence failed"); return NextResponse.json({ error: "Webhook could not be persisted. Retry the event." }, { status: 500 }); }
 }
