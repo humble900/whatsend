@@ -10,3 +10,14 @@ seed_mock.js
 migrate_variants.js
 test-contacts.csv
 *.tsbuildinfo
+
+PERFORMANCE-*.json
+supabase/.temp
+
+CAMPAIGN-LOAD-RESULTS.json
+
+CAMPAIGN-EDITOR.md
+INBOX-*.md
+MESSAGING-*.md
+PERFORMANCE-*.md
+CAMPAIGN-ROTATION-AUDIT.md

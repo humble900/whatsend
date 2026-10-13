@@ -37,12 +37,12 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
       <aside className="app-sidebar">
-        <Link href="/dashboard" className="app-brand"><span className="app-logo" aria-hidden="true">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/og-image.jpg" alt="" width={1376} height={768} /></span>Whatsend</Link>
+        <Link href="/dashboard" className="app-brand"><span className="app-logo" aria-hidden="true">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/icon.svg" alt="" width={32} height={32} /></span>Whatsend</Link>
         <div className="app-workspace" title={account.workspace.name}>{account.workspace.name}</div>
         <nav aria-label="Workspace navigation">{destinations.map(({ name, href, icon: Icon }) => <Link key={href} href={href} className={active(href) ? "app-nav-active" : ""} aria-current={active(href) ? "page" : undefined}><Icon size={20} />{name}</Link>)}</nav>
         <button className="app-account" aria-label="Open account menu" aria-haspopup="dialog" onClick={() => menu.current?.showModal()}><span className="app-avatar">{initials(displayName)}</span><span className="app-account-copy"><strong>{displayName}</strong><small>{account.email}</small></span><ChevronDown size={17} /></button>
       </aside>
-      <header className="app-mobile-header"><Link href="/dashboard" className="app-brand"><span className="app-logo" aria-hidden="true">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/og-image.jpg" alt="" width={1376} height={768} /></span>Whatsend</Link><button className="app-avatar" aria-label="Open account menu" aria-haspopup="dialog" onClick={() => menu.current?.showModal()}>{initials(displayName)}</button></header>
+      <header className="app-mobile-header"><Link href="/dashboard" className="app-brand"><span className="app-logo" aria-hidden="true">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/icon.svg" alt="" width={32} height={32} /></span>Whatsend</Link><button className="app-avatar" aria-label="Open account menu" aria-haspopup="dialog" onClick={() => menu.current?.showModal()}>{initials(displayName)}</button></header>
       <main className="app-main" key={account.id}><div className="app-content">{error && <div className="app-error" role="alert">{error}<button onClick={() => void refresh()}>Retry</button></div>}{children}</div></main>
       <nav className="app-bottom-nav" aria-label="Mobile navigation">{destinations.slice(0, 4).map(({ name, href, icon: Icon }) => <Link key={href} href={href} aria-current={active(href) ? "page" : undefined} className={active(href) ? "app-nav-active" : ""}><Icon size={21} /><span>{name}</span></Link>)}</nav>
       <dialog ref={menu} className="app-account-dialog" aria-labelledby="account-menu-title" onClick={event => { if (event.target === event.currentTarget) close(); }}>

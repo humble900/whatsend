@@ -66,6 +66,7 @@ export const campaigns = pgTable("campaigns", {
   contactsProcessed: integer("contacts_processed").default(0).notNull(),
   // Scheduling fields
   dailyLimitPerAccount: integer("daily_limit_per_account").default(50).notNull(),
+  stopOnReply: boolean("stop_on_reply").default(true).notNull(),
   delayMode: varchar("delay_mode", { length: 10 }).default("smart").notNull(), // 'smart' | 'custom'
   customDelayMin: integer("custom_delay_min").default(15).notNull(), // seconds
   customDelayMax: integer("custom_delay_max").default(45).notNull(), // seconds
@@ -148,6 +149,7 @@ export const outboundMessages = pgTable("outbound_messages", {
   id: uuid("id").primaryKey().defaultRandom(), tenantId: uuid("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
   instanceId: uuid("instance_id").references(() => whatsappInstances.id, { onDelete: "cascade" }).notNull(),
   campaignId: uuid("campaign_id").references(() => campaigns.id, { onDelete: "cascade" }),
+  campaignSequence: integer('campaign_sequence'),
   requestKey: varchar("request_key", { length: 255 }).notNull(), requestHash: varchar("request_hash", { length: 64 }).notNull(),
   remoteJid: varchar("remote_jid", { length: 50 }).notNull(), payload: jsonb("payload").notNull(), messageText: text("message_text").notNull(),
   status: varchar("status", { length: 30 }).default("queued").notNull(), evolutionMessageId: varchar("evolution_message_id", { length: 255 }),
@@ -161,7 +163,13 @@ export const messageReceipts = pgTable("message_receipts", {
 }, table => [uniqueIndex("receipts_tenant_instance_message").on(table.tenantId, table.instanceId, table.evolutionMessageId)]);
 export const campaignWorkerHealth = pgTable("campaign_worker_health", {
   id: uuid("id").primaryKey(), lastSeenAt: timestamp("last_seen_at").notNull().defaultNow(),
+  sharedMediaReady:boolean('shared_media_ready').notNull().default(false),
+  rotationReady:boolean('rotation_ready').notNull().default(false),
 });
+export const messageAssets=pgTable('message_assets',{
+ id:uuid('id').primaryKey().defaultRandom(),tenantId:uuid('tenant_id').references(()=>tenants.id,{onDelete:'cascade'}).notNull(),
+ contentHash:varchar('content_hash',{length:64}).notNull(),data:text('data').notNull(),createdAt:timestamp('created_at').notNull().defaultNow(),
+},table=>[uniqueIndex('message_assets_tenant_hash').on(table.tenantId,table.contentHash)]);
 export const contactPhotos = pgTable("contact_photos", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: uuid("tenant_id").references(()=>tenants.id,{onDelete:"cascade"}).notNull(),

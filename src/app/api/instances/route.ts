@@ -50,13 +50,12 @@ export async function GET(req: Request) {
     const authHeader = req.headers.get("Authorization");
     const { tenantId } = await requireAuthAndTenant(authHeader);
 
-    const instances = await db.query.whatsappInstances.findMany({
+    const [instances,counts]=await Promise.all([db.query.whatsappInstances.findMany({
       where: eq(whatsappInstances.tenantId, tenantId),
       orderBy: [desc(whatsappInstances.createdAt)]
-    });
-
-    const counts = await db.execute(sql`select instance_id, count(*)::int as count from outbound_messages where tenant_id=${tenantId} and campaign_id is not null and status in ('sent','delivered','read') and sent_at >= date_trunc('day',now()) group by instance_id`);
-    return NextResponse.json({ instances: instances.map(instance => ({ ...instance, messagesSentToday: Number(counts.find(row => row.instance_id === instance.id)?.count || 0) })) }, { status: 200 });
+    }),db.execute(sql`select instance_id, count(*)::int as count from outbound_messages where tenant_id=${tenantId} and campaign_id is not null and status in ('sent','delivered','read') and sent_at >= date_trunc('day',now()) group by instance_id`)]);
+    const countsByInstance=new Map(counts.map(row=>[row.instance_id,Number(row.count)]));
+    return NextResponse.json({ instances: instances.map(instance => ({ ...instance, messagesSentToday: countsByInstance.get(instance.id)||0 })) }, { status: 200 });
   } catch (error: any) {
     const authFailure = authenticationError(error);
     if (authFailure) return authFailure;

@@ -18,8 +18,9 @@ export function getCampaignQueue() {
   queue ||= new Queue(CAMPAIGN_QUEUE, { connection, defaultJobOptions: { attempts: 1, removeOnComplete: { count: 1000 }, removeOnFail: { count: 1000 } } });
   return queue;
 }
-export async function assertCampaignWorkerAvailable() {
-  const heartbeat = await db.query.campaignWorkerHealth.findFirst({ where: sql`${campaignWorkerHealth.lastSeenAt} > now() - interval '30 seconds'` });
-  if (!heartbeat) throw new Error("Campaign worker is offline. Start the worker before launching. Direct replies remain available.");
+export async function assertCampaignWorkerAvailable(requireRotation = false) {
+  const workers = await db.query.campaignWorkerHealth.findMany({ where: sql`${campaignWorkerHealth.lastSeenAt} > now() - interval '30 seconds'`, columns:{rotationReady:true} });
+  if (!workers.length) throw new Error("Campaign worker is offline. Start the worker before launching. Direct replies remain available.");
+  if(requireRotation&&workers.some(worker=>!worker.rotationReady))throw new Error('The campaign sending service needs an update before launch. Direct replies remain available.');
 }
 export async function enqueueOutbound(id: string) { return getCampaignQueue().add("dispatch-message", { outboundId: id }, { jobId: id }); }

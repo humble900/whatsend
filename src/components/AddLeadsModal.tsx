@@ -9,6 +9,8 @@ import {
   Download, Search, Check, Phone,
 } from "lucide-react";
 import Papa from "papaparse";
+import {normalizeImportPhone as smartNormalize} from "@/lib/phone-normalization";
+import {contactVariables} from '@/lib/campaign-personalization';
 
 // ─── Official Google G SVG logo ───────────────────────────────────────────────
 const GoogleIcon = () => (
@@ -50,40 +52,6 @@ interface CrmContact {
   metadata?: Record<string, any>;
 }
 
-// ─── Smart phone normalization ────────────────────────────────────────────────
-// Rules (researched from ITU-T E.164, WhatsApp requirements, 2026):
-//  1. Strip all non-digits and leading '+'
-//  2. If prepend is OFF → use digits as-is (user guarantees full E.164)
-//  3. If prepend is ON:
-//     a. If number already starts with country code → use as-is (no double-prepend)
-//     b. Strip ONE leading zero (local format like 08012345678 → 8012345678)
-//     c. Prepend CC to the stripped number
-//  4. Final length must be 7–15 digits (E.164 spec)
-
-function smartNormalize(raw: string, cc: string, useCc: boolean): string | null {
-  const d = raw.replace(/[^0-9]/g, "");  // strip non-digits (handles '+' too)
-  if (!d) return null;
-
-  if (!useCc || !cc) {
-    // User manages their own formatting — just validate length
-    if (d.length < 7 || d.length > 15) return null;
-    return d;
-  }
-
-  // Already has country code? Use as-is
-  if (d.startsWith(cc)) {
-    if (d.length < 7 || d.length > 15) return null;
-    return d;
-  }
-
-  // Strip one leading zero (local number format: 08012345678 → 8012345678)
-  const stripped = d.startsWith("0") ? d.slice(1) : d;
-
-  const withCc = cc + stripped;
-  if (withCc.length < 7 || withCc.length > 15) return null;
-  return withCc;
-}
-
 function extractSheetId(url: string): string | null {
   const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
   return m ? m[1] : null;
@@ -119,20 +87,23 @@ function CcControl({ countryCode, setCountryCode, useCc, setUseCc }: CcControlPr
       <button
         type="button"
         onClick={() => setUseCc(!useCc)}
+        role="switch"
+        aria-checked={useCc}
+        aria-label="Use default country code"
         className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${useCc ? "bg-green-500" : "bg-gray-300"}`}
-        title={useCc ? "Prepend country code to local numbers" : "Use numbers as-is (they already have country code)"}
+        title={useCc ? "Use default country code" : "Use numbers as-is (they already have country code)"}
       >
-        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${useCc ? "translate-x-5" : "translate-x-0.5"}`} />
+        <span className={`absolute left-0 top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${useCc ? "translate-x-5" : "translate-x-0.5"}`} />
       </button>
 
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-gray-700">
-          {useCc ? "Prepend country code to local numbers" : "Numbers already include country code"}
+          Use default country code
         </p>
         <p className="text-[10px] text-gray-400 mt-0.5">
           {useCc
-            ? "Adds +CC to numbers that don't have it. Existing +CC numbers are never doubled."
-            : "Numbers will be used exactly as uploaded. Use this if your data has full international format."}
+            ? "Convert local numbers using this code. Numbers starting with + or 00 keep their own country code."
+            : "Use international numbers with their country code. Turn on for local numbers."}
         </p>
       </div>
 
@@ -143,7 +114,9 @@ function CcControl({ countryCode, setCountryCode, useCc, setUseCc }: CcControlPr
           <input
             type="text"
             value={countryCode}
-            onChange={e => setCountryCode(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            aria-label="Default country calling code"
+            inputMode="numeric"
+            onChange={e => setCountryCode(e.target.value.replace(/\D/g, "").slice(0, 3))}
             className="w-14 px-2 py-1.5 text-xs bg-transparent focus:outline-none text-gray-800 font-semibold"
             placeholder="1"
           />
@@ -158,7 +131,7 @@ function CcControl({ countryCode, setCountryCode, useCc, setUseCc }: CcControlPr
 export default function AddLeadsModal({ onClose, onAdd, mode = "leads", title }: AddLeadsModalProps) {
   const [source, setSource] = useState<string | null>(null);
   const [countryCode, setCountryCode] = useState("");
-  const [useCc, setUseCc] = useState(true);
+  const [useCc, setUseCc] = useState(false);
   const [listName, setListName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -211,13 +184,14 @@ export default function AddLeadsModal({ onClose, onAdd, mode = "leads", title }:
     setSelectedList(list);
     setListContactsLoading(true);
     try {
-      const res = await authenticatedFetch("/api/contacts", { headers: { } });
+      const res = await authenticatedFetch("/api/contacts?"+new URLSearchParams({list:list.name}), { headers: { } });
       const data = await res.json();
       const filtered: ImportedContact[] = (data.contacts || [])
         .filter((c: any) => c.metadata?._listName === list.name)
         .map((c: any) => ({
           phone: c.remoteJid.replace("@s.whatsapp.net", ""),
           name: c.pushName || undefined,
+          variables: contactVariables(c.metadata),
           source: `List: ${list.name}`,
         }));
       setListContacts(filtered);
@@ -251,11 +225,7 @@ export default function AddLeadsModal({ onClose, onAdd, mode = "leads", title }:
         setPhoneCol(autoPhone); setNameCol(autoName);
         if (!listName && file.name) setListName(file.name.replace(/\.csv$/i, ""));
 
-        // Auto-detect if numbers already have a country code (heuristic: avg digits > 10)
-        const sample = (r.data as Record<string, string>[]).slice(0, 5).map(row => row[autoPhone] || "");
-        const avgLen = sample.map(s => s.replace(/\D/g, "").length).reduce((a, b) => a + b, 0) / (sample.length || 1);
-        if (avgLen > 10) setUseCc(false); // Likely already has country code
-        else setUseCc(true);
+
       },
     });
   };
@@ -312,7 +282,7 @@ export default function AddLeadsModal({ onClose, onAdd, mode = "leads", title }:
         const phone = smartNormalize(row[phoneCol] || "", cc, useCc);
         if (!phone) return [];
         const vars: Record<string, string> = {};
-        Object.keys(row).forEach(k => { if (k !== phoneCol && k !== nameCol) vars[k] = row[k]; });
+        Object.keys(row).forEach(k => { if (k !== phoneCol) vars[k.trim()] = row[k] || ''; });
         return [{ phone, name: nameCol ? (row[nameCol] || undefined) : undefined, variables: vars, source: "CSV Upload" }];
       });
     }
@@ -322,7 +292,7 @@ export default function AddLeadsModal({ onClose, onAdd, mode = "leads", title }:
         const phone = smartNormalize(row[sheetPhoneCol] || "", cc, useCc);
         if (!phone) return [];
         const vars: Record<string, string> = {};
-        Object.keys(row).forEach(k => { if (k !== sheetPhoneCol && k !== sheetNameCol) vars[k] = row[k]; });
+        Object.keys(row).forEach(k => { if (k !== sheetPhoneCol) vars[k.trim()] = row[k] || ''; });
         return [{ phone, name: sheetNameCol ? (row[sheetNameCol] || undefined) : undefined, variables: vars, source: "Google Sheets" }];
       });
     }
@@ -351,7 +321,7 @@ export default function AddLeadsModal({ onClose, onAdd, mode = "leads", title }:
         const c = crmContacts.find(x => x.id === id);
         if (!c) return [];
         const phone = c.remoteJid.replace("@s.whatsapp.net", "");
-        return [{ phone, name: c.pushName || undefined, source: "CRM" }];
+        return [{ phone, name: c.pushName || undefined, variables: contactVariables(c.metadata), source: "CRM" }];
       });
     }
 
@@ -360,8 +330,9 @@ export default function AddLeadsModal({ onClose, onAdd, mode = "leads", title }:
 
   // ── Submit ──────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    const built = buildContacts();
-    if (!built.length || submitting) return;
+    const built = [...new Map(buildContacts().map(contact => [contact.phone, contact])).values()];
+    if (submitting) return;
+    if(!built.length){setSubmitError(useCc&&!countryCode?"Enter a country calling code or turn off the default country code.":"No complete phone numbers found. Review the number preview.");return;}
     setSubmitting(true); setSubmitError("");
     try {
       if (mode === "contacts") {
@@ -381,7 +352,11 @@ export default function AddLeadsModal({ onClose, onAdd, mode = "leads", title }:
   };
 
   // ── Derived state ────────────────────────────────────────────────────────
-  const contacts = buildContacts();
+  const normalizedContacts = buildContacts();
+  const contacts = [...new Map(normalizedContacts.map(contact => [contact.phone, contact])).values()];
+  const inputCount = source === 'csv' ? rawCsv.length : source === 'sheets' ? sheetData.length : source === 'paste' ? pasteText.split(/\n+/).filter(line => line.trim()).length : normalizedContacts.length;
+  const rejectedCount = Math.max(0, inputCount - normalizedContacts.length);
+  const duplicateCount = normalizedContacts.length - contacts.length;
   const validCount = contacts.length;
   const cc = countryCode.replace(/\D/g, "");
 
@@ -435,7 +410,7 @@ export default function AddLeadsModal({ onClose, onAdd, mode = "leads", title }:
           <h2 className="font-bold text-gray-900 text-base">
             {title || (mode === "contacts" ? "Import Contacts" : "Add Leads to Campaign")}
           </h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+          <button aria-label="Close import dialog" onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -604,7 +579,7 @@ export default function AddLeadsModal({ onClose, onAdd, mode = "leads", title }:
                   <div>
                     <label className="text-xs text-gray-600 font-medium block mb-1">Phone numbers</label>
                     <p className="text-[11px] text-gray-400 mb-2">One per line. Name is optional — put it before or after the number.</p>
-                    <textarea value={pasteText} onChange={e => setPasteText(e.target.value)}
+                    <textarea aria-label="Phone numbers" value={pasteText} onChange={e => setPasteText(e.target.value)}
                       placeholder={"John Doe +2348012345678\n+447911123456 Sarah\n08012345678"}
                       rows={7}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm font-mono focus:ring-2 focus:ring-green-500 outline-none resize-none text-gray-800 placeholder:text-gray-300" />
@@ -743,8 +718,12 @@ export default function AddLeadsModal({ onClose, onAdd, mode = "leads", title }:
         {/* Footer */}
         {source && canSubmit && (
           <div className="px-5 pb-5 pt-3 border-t border-gray-100 shrink-0">
+            {['csv','sheets','paste'].includes(source) && <div className="mb-3 text-xs text-gray-500" aria-label="Phone number preview"><p className="font-medium text-gray-700">{validCount} unique numbers ready</p>{contacts.slice(0,3).map(contact => <span key={contact.phone} className="inline-block mr-3 mt-1 font-mono">+{contact.phone}</span>)}{!validCount && <p className="mt-1">Use complete international numbers, or turn on a default country code for local numbers.</p>}</div>}
+            {useCc && !countryCode && <p role="alert" className="text-sm text-amber-700 mb-3">Enter a country calling code, such as 234, to convert local numbers.</p>}
+            {rejectedCount > 0 && <p className="text-xs text-amber-700 mb-2">{rejectedCount} rows will be skipped because their numbers are incomplete or invalid.</p>}
+            {duplicateCount > 0 && <p className="text-xs text-gray-500 mb-2">{duplicateCount} duplicate numbers removed.</p>}
             {submitError && <p role="alert" className="text-sm text-red-600 mb-3">{submitError}</p>}
-            <button onClick={handleSubmit} disabled={submitting}
+            <button onClick={handleSubmit} disabled={submitting || !validCount}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-green-600 text-white font-semibold text-sm hover:bg-green-700 disabled:opacity-50 transition-colors">
               {submitting
                 ? <><Loader2 className="w-4 h-4 animate-spin" /> Importing…</>

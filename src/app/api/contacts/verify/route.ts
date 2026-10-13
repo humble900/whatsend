@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { requireAuthAndTenant } from "@/lib/auth";
 import { db } from "@/db";
 import { whatsappInstances, contacts } from "@/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray,sql } from "drizzle-orm";
 import { checkWhatsAppNumbers } from "@/lib/evolution";
 
 /**
@@ -48,6 +48,10 @@ export async function POST(req: Request) {
       exists: resultsMap.get(phone)?.exists ?? false,
       jid: resultsMap.get(phone)?.jid,
     }));
+    if(body.saveVerified===true){
+      const verified=results.map(result=>({jid:`${result.phone}@s.whatsapp.net`,status:result.exists?'verified':'invalid'}));
+      await db.execute(sql`update contacts c set metadata=coalesce(c.metadata,'{}'::jsonb)||jsonb_build_object('_waStatus',v.status,'_waCheckedAt',${new Date().toISOString()}::text) from jsonb_to_recordset(${JSON.stringify(verified)}::jsonb) as v(jid text,status text) where c.tenant_id=${tenantId} and c.remote_jid=v.jid`);
+    }
 
     return NextResponse.json({
       results,

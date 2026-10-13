@@ -5,6 +5,7 @@ import { and, eq, desc, sql } from "drizzle-orm";
 import { outboundPayloadSchema, payloadPreview, phoneSchema, isOptOut, type OutboundPayload } from "./messaging-contracts";
 import { EvolutionError, sendEvolutionPayload } from "./evolution";
 import { storeMessage, storeReceipt } from "./store-message";
+import {resolveStoredPayload} from './campaign-assets';
 
 export class MessagingError extends Error { constructor(message: string, public status = 400, public outboundId?: string) { super(message); } }
 export async function createOutbound(input: { tenantId: string; instanceId: string; campaignId?: string; requestKey: string; phone: string; payload: OutboundPayload; userId?: string }) {
@@ -40,7 +41,8 @@ export async function dispatchOutbound(id: string, tenantId: string) {
   try {
     const instance = await db.query.whatsappInstances.findFirst({ where: and(eq(whatsappInstances.id, row.instanceId), eq(whatsappInstances.tenantId, tenantId)) });
     if (!instance || instance.status !== "connected") throw new EvolutionError("WhatsApp connection is not connected.", 409);
-    const result = await sendEvolutionPayload(instance.evolutionInstanceId, row.remoteJid, row.payload as OutboundPayload);
+    const payload=await resolveStoredPayload(tenantId,row.payload);
+    const result = await sendEvolutionPayload(instance.evolutionInstanceId, row.remoteJid, payload);
     await db.update(outboundMessages).set({ evolutionMessageId: result.key.id, sentAt: new Date() }).where(eq(outboundMessages.id, id));
     await db.insert(contacts).values({ tenantId, instanceId: row.instanceId, remoteJid: row.remoteJid }).onConflictDoUpdate({ target: [contacts.tenantId, contacts.remoteJid], set: { remoteJid: row.remoteJid } });
     const stored = await storeMessage({ tenantId, instanceId: row.instanceId, remoteJid: row.remoteJid, isFromMe: true, messageText: row.messageText, messageType: (row.payload as OutboundPayload).type, payload: row.payload, evolutionMessageId: result.key.id, status: "sent" });

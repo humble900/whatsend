@@ -16,12 +16,14 @@ export async function POST(req: Request) {
     const input = schema.parse(await req.json());
     const instance = await db.query.whatsappInstances.findFirst({ where: and(eq(whatsappInstances.tenantId, tenantId), eq(whatsappInstances.id, input.instanceId)) });
     if (!instance) throw new MessagingError("Connection not found.", 404);
+    if(instance.status!=='connected'){
     const liveState = await getEvolutionState(instance.evolutionServerUrl,instance.evolutionInstanceId);
     if (liveState !== "open") {
       await db.update(whatsappInstances).set({status:liveState === "connecting" ? "connecting" : "disconnected"}).where(eq(whatsappInstances.id,instance.id));
       throw new MessagingError("Connect your WhatsApp number before sending.", 409);
     }
     if(instance.status !== "connected") await db.update(whatsappInstances).set({status:"connected"}).where(eq(whatsappInstances.id,instance.id));
+    }
     const jid = `${input.targetPhone}@s.whatsapp.net`;
     await assertReplyAllowed(tenantId, input.instanceId, jid);
     const payload = input.payload || { type: "text" as const, text: input.messageText! };

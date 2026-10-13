@@ -9,7 +9,8 @@ import {
   ShieldCheck, XCircle, AlertTriangle, X,
 } from "lucide-react";
 import { format } from "date-fns";
-import AddLeadsModal from "@/components/AddLeadsModal";
+import dynamic from "next/dynamic";
+const AddLeadsModal=dynamic(()=>import("@/components/AddLeadsModal"));
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -220,53 +221,36 @@ export default function ContactsPage() {
   const [verifying, setVerifying] = useState(false);
   const [verifyResult, setVerifyResult] = useState<{ verified: number; invalid: number } | null>(null);
 
-  // ── Fetch contacts ─────────────────────────────────────────────────────────
-  const [loadError, setLoadError] = useState("");
-  const fetchContacts = useCallback(async () => {
-    setLoading(true);
-    setLoadError("");
-    try {
-      const res = await authenticatedFetch("/api/contacts", { headers: { } });
-      const data = await res.json();
-      if (data.contacts) setContacts(data.contacts);
-    } catch (err) { setLoadError(err instanceof Error ? err.message : "Could not load contacts."); }
-    finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchContacts(); }, [fetchContacts]);
-
-  // ── Filtering + pagination ─────────────────────────────────────────────────
-  const filtered = contacts.filter(c => {
-    if (filter === "saved" && !c.isSaved) return false;
-    if (filter === "blacklisted" && !c.isBlacklisted) return false;
-    if (activeList && c.metadata?._listName !== activeList) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return c.pushName?.toLowerCase().includes(q) || c.remoteJid.includes(q);
-    }
-    return true;
-  });
-
-  const pageContacts = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-
-  // Reset page on filter change
-  useEffect(() => setPage(1), [search, filter, activeList, viewMode]);
-
-  // ── Lists ──────────────────────────────────────────────────────────────────
-  const listsMap = new Map<string, Contact[]>();
-  for (const c of contacts) {
-    const l: string = c.metadata?._listName || "Unsaved Chats";
-    if (!listsMap.has(l)) listsMap.set(l, []);
-    listsMap.get(l)!.push(c);
-  }
-  const savedLists: SavedList[] = Array.from(listsMap.entries())
-    .filter(([name]) => name !== "Unsaved Chats")
-    .map(([name, cs]) => ({
-      name, count: cs.length,
-      importedAt: cs[0]?.metadata?._importedAt || null,
-      samples: cs.slice(0, 3).map(c => c.pushName || `+${c.remoteJid.replace("@s.whatsapp.net", "")}`),
-    }));
+  const [loadError,setLoadError]=useState('');
+  const [filteredTotal,setFilteredTotal]=useState(0);
+  const [contactCounts,setContactCounts]=useState({total:0,saved:0,blacklisted:0,unverified:0});
+  const [savedLists,setSavedLists]=useState<SavedList[]>([]);
+  const [searchTerm,setSearchTerm]=useState('');
+  const fetchVersion=useRef(0),fetchController=useRef<AbortController|null>(null);
+  const [exporting,setExporting]=useState(false);
+  useEffect(()=>{const timer=setTimeout(()=>{setSearchTerm(search);setPage(1);},250);return()=>clearTimeout(timer);},[search]);
+  const queryParams=useCallback((currentPage:number,limit=PAGE_SIZE)=>new URLSearchParams({page:String(currentPage),limit:String(limit),q:searchTerm,filter,...(activeList?{list:activeList}:{})}),[searchTerm,filter,activeList]);
+  const fetchContacts=useCallback(async()=>{
+    const version=++fetchVersion.current;fetchController.current?.abort();const controller=new AbortController();fetchController.current=controller;
+    setLoading(true);setLoadError('');
+    try{
+      const [response,listResponse]=await Promise.all([authenticatedFetch('/api/contacts?'+queryParams(page),{signal:controller.signal}),authenticatedFetch('/api/contacts/lists',{signal:controller.signal})]);
+      const [data,listData]=await Promise.all([response.json(),listResponse.json()]);
+      if(version!==fetchVersion.current)return;
+      setContacts(data.contacts);setFilteredTotal(data.total);setContactCounts(data.counts);setSavedLists(listData.lists);
+      if(page>1&&page>Math.max(1,Math.ceil(data.total/PAGE_SIZE)))setPage(Math.max(1,Math.ceil(data.total/PAGE_SIZE)));
+    }catch(error){if(version===fetchVersion.current&&!controller.signal.aborted)setLoadError(error instanceof Error?error.message:'Could not load contacts.');}
+    finally{if(version===fetchVersion.current)setLoading(false);}
+  },[queryParams,page]);
+  useEffect(()=>{void fetchContacts();return()=>fetchController.current?.abort();},[fetchContacts]);
+  useEffect(()=>setPage(1),[filter,activeList,viewMode]);
+  const filtered=contacts,pageContacts=contacts;
+  const totalPages=Math.max(1,Math.ceil(filteredTotal/PAGE_SIZE));
+  const allMatchingContacts=async()=>{
+    const result:Contact[]=[];let current=1,hasMore=true;
+    while(hasMore){const response=await authenticatedFetch('/api/contacts?'+queryParams(current,500));const data=await response.json();result.push(...data.contacts);hasMore=data.hasMore;current++;}
+    return result;
+  };
 
   // ── Selection helpers ──────────────────────────────────────────────────────
   const toggleRow = (id: string) =>
@@ -291,7 +275,9 @@ export default function ContactsPage() {
     setVerifying(true);
     setVerifyResult(null);
     try {
-      const unverified = filtered
+      const verifyParams=queryParams(1,500);verifyParams.set('unchecked','true');
+      const candidates=await authenticatedFetch("/api/contacts?"+verifyParams).then(response=>response.json());
+      const unverified = (candidates.contacts as Contact[])
         .filter(c => !c.waStatus || c.waStatus === "unchecked")
         .map(c => c.remoteJid.replace("@s.whatsapp.net", ""))
         .slice(0, 500);
@@ -315,26 +301,24 @@ export default function ContactsPage() {
           return c;
         }));
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { setLoadError(e instanceof Error?e.message:'Could not verify contacts.'); }
     finally { setVerifying(false); }
   };
 
   // ── Export ─────────────────────────────────────────────────────────────────
-  const handleExport = (scope: ExportScope, fmt: ExportFormat) => {
-    let targets: Contact[];
-    if (scope === "selected") targets = filtered.filter(c => selected.has(c.id));
-    else if (scope === "page") targets = pageContacts;
-    else targets = filtered;
-
-    const date = format(new Date(), "yyyy-MM-dd");
-    if (fmt === "csv") {
-      download(toCsv(targets), `contacts_${scope}_${date}.csv`, "text/csv");
-    } else {
-      download(toVcf(targets), `contacts_${scope}_${date}.vcf`, "text/vcard");
-    }
+  const handleExport=async(scope:ExportScope,fmt:ExportFormat)=>{
+    if(exporting)return;setExporting(true);setLoadError('');
+    try{
+      const matches=scope==='page'?pageContacts:await allMatchingContacts();
+      const targets=scope==='selected'?matches.filter(contact=>selected.has(contact.id)):matches;
+      const date=format(new Date(),'yyyy-MM-dd');
+      if(fmt==='csv')download(toCsv(targets),'contacts_'+scope+'_'+date+'.csv','text/csv');
+      else download(toVcf(targets),'contacts_'+scope+'_'+date+'.vcf','text/vcard');
+    }catch(error){setLoadError(error instanceof Error?error.message:'Could not export contacts.');}
+    finally{setExporting(false);}
   };
 
-  const unverifiedCount = filtered.filter(c => !c.waStatus || c.waStatus === "unchecked").length;
+  const unverifiedCount = contactCounts.unverified;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -345,14 +329,14 @@ export default function ContactsPage() {
         <div>
           
           <p className="text-sm text-gray-500 mt-0.5">
-            {contacts.length.toLocaleString()} contacts{selected.size > 0 && <span className="ml-2 text-green-600 font-semibold">· {selected.size} selected</span>}
+            {contactCounts.total.toLocaleString()} contacts{exporting&&<span className="ml-2" role="status">Preparing export…</span>}{selected.size > 0 && <span className="ml-2 text-green-600 font-semibold">· {selected.size} selected</span>}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <ExportDropdown
             selectedCount={selected.size}
             pageCount={pageContacts.length}
-            totalCount={filtered.length}
+            totalCount={filteredTotal}
             onExport={handleExport}
           />
           <button
@@ -435,7 +419,7 @@ export default function ContactsPage() {
                   className="text-xs text-gray-400 hover:text-gray-700 font-medium">Lists</button>
                 <span className="text-gray-300">/</span>
                 <span className="text-xs font-semibold text-gray-800">{activeList}</span>
-                <span className="text-xs text-gray-400">({listsMap.get(activeList)?.length || 0})</span>
+                <span className="text-xs text-gray-400">({savedLists.find(list=>list.name===activeList)?.count||0})</span>
                 <button onClick={() => setActiveList(null)} className="ml-auto p-1 rounded hover:bg-gray-100">
                   <X className="w-3.5 h-3.5 text-gray-400" />
                 </button>
@@ -448,9 +432,9 @@ export default function ContactsPage() {
                 {!activeList && (
                   <div className="flex items-center gap-1.5">
                     {([
-                      { key: "all" as ContactFilter, label: "All", count: contacts.length },
-                      { key: "saved" as ContactFilter, label: "Saved", count: contacts.filter(c => c.isSaved).length },
-                      { key: "blacklisted" as ContactFilter, label: "Opted Out", count: contacts.filter(c => c.isBlacklisted).length },
+                      { key: "all" as ContactFilter, label: "All", count: contactCounts.total },
+                      { key: "saved" as ContactFilter, label: "Saved", count: contactCounts.saved },
+                      { key: "blacklisted" as ContactFilter, label: "Opted Out", count: contactCounts.blacklisted },
                     ]).map(({ key, label, count }) => (
                       <button key={key} onClick={() => setFilter(key)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${filter === key ? "bg-green-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
@@ -563,7 +547,7 @@ export default function ContactsPage() {
               {filtered.length > 0 && (
                 <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
                   <p className="text-xs text-gray-400">
-                    {((page - 1) * PAGE_SIZE + 1).toLocaleString()}–{Math.min(page * PAGE_SIZE, filtered.length).toLocaleString()} of {filtered.length.toLocaleString()}
+                    {((page - 1) * PAGE_SIZE + 1).toLocaleString()}–{Math.min(page * PAGE_SIZE, filteredTotal).toLocaleString()} of {filteredTotal.toLocaleString()}
                   </p>
                   <div className="flex items-center gap-2">
                     <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}

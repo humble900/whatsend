@@ -3,12 +3,15 @@ import { NextResponse } from "next/server";
 import { requireAuthAndTenant } from "@/lib/auth";
 import { db } from "@/db";
 import { contacts, whatsappInstances } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
+import { phoneSchema } from '@/lib/messaging-contracts';
+import { normalizeImportPhone } from '@/lib/phone-normalization';
+import { contactVariables } from '@/lib/campaign-personalization';
 
 const importSchema = z.object({
   contacts: z.array(z.object({
-    phone: z.string(),
+    phone: phoneSchema.refine(value => normalizeImportPhone(value, '', false) !== null, 'Use a complete international phone number.'),
     pushName: z.string().optional(),
     variables: z.record(z.string(), z.any()).optional()
   })),
@@ -30,7 +33,8 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
     
-    const { contacts: newContacts, listName } = parsed.data;
+    const { contacts: incomingContacts, listName } = parsed.data;
+    const newContacts = [...new Map(incomingContacts.map(contact => [contact.phone, contact])).values()];
 
     if (newContacts.length === 0) {
       return NextResponse.json({ error: "No valid contacts found. Please make sure your file has a 'phone' column with valid numbers." }, { status: 400 });
@@ -58,14 +62,16 @@ export async function POST(req: Request) {
         instanceId: firstInstance.id,
         remoteJid: `${c.phone}@s.whatsapp.net`,
         pushName: c.pushName || null,
-        metadata: { ...(c.variables || {}), _listName: listName || "Imported List", _importedAt: new Date().toISOString() },
+        metadata: { ...contactVariables(c.variables), _listName: listName || "Imported List", _importedAt: new Date().toISOString() },
         isSaved: true, // Imported contacts are explicitly saved CRM data
       }));
 
       await db.insert(contacts).values(values).onConflictDoUpdate({
         target: [contacts.tenantId, contacts.remoteJid],
         set: {
-          isSaved: true
+          isSaved: true,
+          pushName: sql`coalesce(excluded.push_name, ${contacts.pushName})`,
+          metadata: sql`coalesce(${contacts.metadata}, '{}'::jsonb) || excluded.metadata`,
         }
       });
       imported += chunk.length;

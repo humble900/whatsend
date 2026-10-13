@@ -128,9 +128,10 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/whatsend-32.png", type: "image/png", sizes: "32x32" },
     ],
     apple: [
-      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/whatsend-apple-180.png", type: "image/png", sizes: "180x180" },
     ],
     shortcut: "/icon.svg",
   },

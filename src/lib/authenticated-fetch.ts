@@ -6,7 +6,11 @@ export class AuthenticatedRequestError extends Error {
 /** Always use the current Supabase session, including automatically refreshed tokens. */
 export async function authenticatedFetch(input: string, init: RequestInit = {}) {
   if (!input.startsWith("/api/")) throw new Error("Authenticated requests must target this app.");
-  const { data: { session }, error } = await supabase.auth.getSession();
+  let sessionTimer:ReturnType<typeof setTimeout>|undefined;
+  const { data: { session }, error } = await Promise.race([
+    supabase.auth.getSession(),
+    new Promise<never>((_,reject)=>{sessionTimer=setTimeout(()=>reject(new Error('The sign-in check timed out. Please retry.')),15000);}),
+  ]).finally(()=>clearTimeout(sessionTimer));
   if (error || !session) throw new Error("Please sign in to continue.");
   const headers = new Headers(init.headers);
   const signal = init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(45000)]) : AbortSignal.timeout(45000);

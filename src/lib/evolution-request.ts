@@ -1,16 +1,20 @@
-import { request } from "node:https";
+import { request,Agent } from "node:https";
 import * as tls from "node:tls";
+let trustedAgent:Agent|undefined;
+function connectionAgent(){
+ if(!trustedAgent){const systemCertificates=(tls as typeof tls & {getCACertificates?:(type:string)=>string[]}).getCACertificates?.('system')||[];trustedAgent=new Agent({keepAlive:true,maxSockets:32,maxFreeSockets:8,ca:[...tls.rootCertificates,...systemCertificates],rejectUnauthorized:true});}
+ return trustedAgent;
+}
 
 /** Use trusted OS certificates as well as Node roots; keep TLS verification enabled. */
 export async function trustedServerRequest(url: string, init: RequestInit = {}, timeoutMs = 20000, timeoutMessage = "Service request timed out."): Promise<Response> {
   const parsed = new URL(url);
-  if (parsed.protocol !== "https:") return fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
-  const systemCertificates = (tls as typeof tls & { getCACertificates?: (type: string) => string[] }).getCACertificates?.("system") || [];
+  if (parsed.protocol !== "https:") return fetch(url, { ...init, signal: init.signal?AbortSignal.any([init.signal,AbortSignal.timeout(timeoutMs)]):AbortSignal.timeout(timeoutMs) });
   const headers = Object.fromEntries(new Headers(init.headers).entries());
   return new Promise((resolve, reject) => {
     const req = request(parsed, {
       method: init.method || "GET", headers,
-      ca: [...tls.rootCertificates, ...systemCertificates],
+      agent:connectionAgent(),
       rejectUnauthorized: true,
     }, response => {
       const chunks: Buffer[] = [];

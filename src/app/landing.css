@@ -625,3 +625,6 @@
   .ws-inboxBanner > div { flex-basis: 100%; }
   .ws-inboxBanner > a { margin-left: 0; }
 }
+
+/* Canonical SVG logo: render the mark without cropping the social image. */
+.ws-ogLogo img { position:static;display:block;width:100%;height:100%;max-width:100%;object-fit:contain; }

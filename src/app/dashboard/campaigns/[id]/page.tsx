@@ -1,8 +1,9 @@
 "use client";
-import CampaignSetup from "@/components/CampaignSetup";
+const CampaignSetup=dynamic(()=>import("@/components/CampaignSetup"));
+const CampaignOptions=dynamic(()=>import("@/components/CampaignOptions"));
 import { authenticatedFetch } from "@/lib/authenticated-fetch";
 
-import { useState, useEffect, use, useCallback } from "react";
+import { useState, useEffect, use, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -12,7 +13,9 @@ import {
   Loader2, Plus, X, AlertTriangle, Search,
   Users, ChevronRight, Trash2, MessageSquare, Download,
 } from "lucide-react";
-import AddLeadsModal, { type ImportedContact } from "@/components/AddLeadsModal";
+import type {ImportedContact} from "@/components/AddLeadsModal";
+import dynamic from "next/dynamic";
+const AddLeadsModal=dynamic(()=>import("@/components/AddLeadsModal"));
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,6 +38,8 @@ interface Campaign {
   totalContacts: number;
   contactsProcessed: number;
   dailyLimitPerAccount: number;
+  timezone: string;
+  stopOnReply: boolean;
   delayMode: string;
   customDelayMin: number;
   customDelayMax: number;
@@ -96,6 +101,8 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [setupDirty,setSetupDirty]=useState(false);
+  const changeTab=(next:Tab)=>{if(next===tab)return;if(setupDirty&&!window.confirm("Discard unsaved changes and switch tabs?"))return;setSetupDirty(false);setShowLaunch(false);setTab(next);};
   const [savingName, setSavingName] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState("");
@@ -103,26 +110,32 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
   const [leads, setLeads] = useState<Lead[]>([]);
   const [leadFilter, setLeadFilter] = useState<"all" | "sent" | "replied" | "failed" | "opted_out">("all");
   const [leadSearch, setLeadSearch] = useState("");
+  const [leadPage,setLeadPage]=useState(1);
+  useEffect(()=>setLeadPage(1),[leadSearch,leadFilter,id]);
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [showAddLeads, setShowAddLeads] = useState(false);
   const [showLaunch, setShowLaunch] = useState(false);
 
+  const fetchVersion=useRef(0);
+  const [loadingLeads,setLoadingLeads]=useState(initialTab==="leads");
   const fetchCampaign = useCallback(async () => {
+    const version=++fetchVersion.current;
+    if(tab==="leads")setLoadingLeads(true);
     try {
-      const res = await authenticatedFetch(`/api/campaigns/${id}`, { headers: { } });
+      const res = await authenticatedFetch(`/api/campaigns/${id}?includeLeads=${tab==="leads"}`, { headers: { } });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load");
+      if(version!==fetchVersion.current)return;
+      setError("");
       setCampaign(data.campaign);
       setLeads(data.leads || []);
       setDraftName(data.campaign.name);
     } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
+      if(version===fetchVersion.current)setError(e.message); } finally { if(version===fetchVersion.current){setLoading(false);setLoadingLeads(false);}
     }
-  }, [id]);
+  }, [id,tab]);
 
-  useEffect(() => { fetchCampaign(); }, [id]);
+  useEffect(() => { void fetchCampaign(); }, [fetchCampaign]);
 
   const handleStatusChange = async (newStatus: string) => {
     setActionLoading(true);
@@ -251,14 +264,17 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
               {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
               Resume
             </button>
-          ) : (
+          ) : campaign.status === 'draft' ? (
             <button
+              disabled={setupDirty}
+              aria-disabled={setupDirty}
+              title={setupDirty?"Save or discard your changes before reviewing launch.":undefined}
               onClick={() => setShowLaunch(previous=>!previous)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-700 transition-colors shadow-sm"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Play className="w-3.5 h-3.5" fill="currentColor" /> Save &amp; Launch
+              <Play className="w-3.5 h-3.5" fill="currentColor" /> Review &amp; Launch
             </button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -268,7 +284,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
           {TABS.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
-              onClick={() => setTab(key)}
+              onClick={() => changeTab(key)}
               className={`relative flex items-center gap-2 px-4 py-3.5 text-sm font-medium whitespace-nowrap transition-colors ${
                 tab === key ? "text-gray-900" : "text-gray-400 hover:text-gray-700"
               }`}
@@ -375,7 +391,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 )}
               </div>
 
-              {leads.length === 0 ? (
+              {loadingLeads ? (<div className="flex justify-center p-8"><Loader2 className="animate-spin text-green-600" aria-label="Loading recipients" /></div>) : leads.length === 0 ? (
                 /* Empty state */
                 <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
                   <div className="w-14 h-14 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center mb-5">
@@ -456,7 +472,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
-                        {filteredLeads.map((lead, i) => (
+                        {filteredLeads.slice((leadPage-1)*50,leadPage*50).map((lead, i) => (
                           <tr key={lead.id} className={`hover:bg-gray-50/80 transition-colors ${selectedLeads.has(lead.id) ? "bg-green-50/40" : "bg-white"}`}>
                             <td className="p-3">
                               <input type="checkbox" checked={selectedLeads.has(lead.id)}
@@ -525,9 +541,10 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                   )}
 
                   {/* Footer nav */}
-                  <div className="p-4 border-t border-gray-100 bg-white flex justify-end">
+                  <div className="p-4 border-t border-gray-100 bg-white flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 text-xs text-gray-500"><span>{filteredLeads.length?Math.min((leadPage-1)*50+1,filteredLeads.length):0}–{Math.min(leadPage*50,filteredLeads.length)} of {filteredLeads.length}</span><button type="button" aria-label="Previous recipients" disabled={leadPage===1} onClick={()=>setLeadPage(page=>page-1)} className="disabled:opacity-40">Previous</button><button type="button" aria-label="Next recipients" disabled={leadPage*50>=filteredLeads.length} onClick={()=>setLeadPage(page=>page+1)} className="disabled:opacity-40">Next</button></div>
                     <button
-                      onClick={() => setTab("sequences")}
+                      onClick={() => changeTab("sequences")}
                       className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors"
                     >
                       Next: Sequences <ChevronRight className="w-4 h-4" />
@@ -545,8 +562,8 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 <h2 className="text-base font-bold text-gray-900">Message Sequences</h2>
                 <p className="text-sm text-gray-400 mt-0.5">Define message variants for A/B testing.</p>
               </div>
-              {campaign.status === "draft" && <CampaignSetup campaign={campaign} mode="message" onSaved={fetchCampaign} />}
-              {campaign.variants && campaign.variants.length > 0 ? (
+              {campaign.status === "draft" && <CampaignSetup key={campaign.id} campaign={campaign} mode="message" onSaved={fetchCampaign} onDirtyChange={setSetupDirty} />}
+              {campaign.status !== "draft" && (campaign.variants && campaign.variants.length > 0 ? (
                 <div className="space-y-3">
                   {campaign.variants.map((v: any, i: number) => (
                     <div key={v.id || i} className="p-5 rounded-xl border border-gray-100 bg-white shadow-sm space-y-2">
@@ -564,19 +581,19 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                   <p className="text-sm text-gray-500 font-medium">No message sequences yet.</p>
                   <p className="text-xs text-gray-400 mt-1">Set up your campaign messages here.</p>
                 </div>
-              )}
+              ))}
             </motion.div>
           )}
 
           {/* ═══ SCHEDULE ═══════════════════════════════════════════════════ */}
           {tab === "schedule" && (
             <motion.div key="schedule" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
-              {campaign.status === "draft" && <CampaignSetup campaign={campaign} mode="schedule" onSaved={fetchCampaign} />}
+              {campaign.status === "draft" && <CampaignSetup key={campaign.id} campaign={campaign} mode="schedule" onSaved={fetchCampaign} onDirtyChange={setSetupDirty} />}
               <div>
                 <h2 className="text-base font-bold text-gray-900">Schedule</h2>
                 <p className="text-sm text-gray-400 mt-0.5">Configure when and how fast messages are sent.</p>
               </div>
-              <div className="grid sm:grid-cols-2 gap-4">
+              {campaign.status !== "draft" && <div className="grid sm:grid-cols-2 gap-4">
                 <div className="p-5 rounded-xl border border-gray-100 bg-white shadow-sm space-y-3">
                   <p className="font-semibold text-sm text-gray-800">Sending Windows</p>
                   {campaign.sendingWindows.map((w, i) => (
@@ -601,7 +618,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                     </div>
                   ))}
                 </div>
-              </div>
+              </div>}
             </motion.div>
           )}
 
@@ -609,9 +626,10 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
           {tab === "options" && (
             <motion.div key="options" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
               <div>
-                <h2 className="text-base font-bold text-gray-900">Options</h2>
-                <p className="text-sm text-gray-400 mt-0.5">Advanced settings and danger zone.</p>
+
+                <p className="text-sm text-gray-400 mt-0.5">Choose sending accounts, set limits, and manage replies.</p>
               </div>
+              <CampaignOptions key={campaign.id} campaign={campaign} onSaved={fetchCampaign} onEditMessages={()=>changeTab("sequences")} onDirtyChange={setSetupDirty}/>
               <div className="p-5 rounded-xl border border-red-100 bg-red-50/50 space-y-4">
                 <p className="font-semibold text-sm text-red-600">Danger Zone</p>
                 <div className="flex items-center justify-between">

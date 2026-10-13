@@ -75,7 +75,8 @@ export default function AuthPage() {
       >
         {/* Logo */}
         <div className="flex items-center justify-center mb-8">
-          <Link href="/" className="text-3xl font-extrabold text-[#14251d] tracking-tight hover:opacity-90 transition-opacity">
+          <Link href="/" className="flex items-center gap-3 text-3xl font-extrabold text-[#14251d] tracking-tight hover:opacity-90 transition-opacity">
+            <img src="/icon.svg" alt="" width={36} height={36}/>
             Whatsend
           </Link>
         </div>

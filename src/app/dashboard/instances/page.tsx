@@ -17,6 +17,8 @@ export default function InstancesPage() {
   const [loadingInstances, setLoadingInstances] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [visibleLimit,setVisibleLimit]=useState(50);
+  useEffect(()=>setVisibleLimit(50),[searchQuery,filterStatus]);
 
   const providerStats = {
     whatsapp_web: instances.filter(i => i.status === "connected").length, // Simplification for now, all current instances are WA Web
@@ -34,7 +36,10 @@ export default function InstancesPage() {
   const [settingsTarget, setSettingsTarget] = useState<any | null>(null);
   const [editDailyLimit, setEditDailyLimit] = useState(25);
 
+  const fetchingInstances=useRef(false);
   const fetchInstances = async () => {
+    if(fetchingInstances.current)return;
+    fetchingInstances.current=true;
     try {
       const res = await authenticatedFetch("/api/instances", {
         headers: { }
@@ -42,17 +47,15 @@ export default function InstancesPage() {
       const data = await res.json();
       if (data.instances) {
         setInstances(data.instances);
-        const live = await Promise.allSettled(data.instances.map(async (instance: any) => {
-          const response = await authenticatedFetch(`/api/instances/${instance.id}/status`);
-          const status = await response.json();
-          return { ...instance, status: status.status, phoneNumber: status.phoneNumber || instance.phoneNumber };
-        }));
-        setInstances(data.instances.map((instance: any,index: number) => live[index].status === "fulfilled" ? (live[index] as PromiseFulfilledResult<any>).value : instance));
+        // Connection webhooks maintain these statuses. Only a number being
+        // paired needs live provider polling; do not fan out over every account.
+        setError(null);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load connections.");
     } finally {
       setLoadingInstances(false);
+      fetchingInstances.current=false;
     }
   };
 
@@ -402,7 +405,7 @@ export default function InstancesPage() {
             </div>
           ) : (
             <div className="divide-y divide-border/50">
-              {filteredInstances.map((instance, index) => (
+              {filteredInstances.slice(0,visibleLimit).map((instance, index) => (
                 <motion.div
                   key={instance.id}
                   initial={{ opacity: 0, y: 10 }}
@@ -474,6 +477,7 @@ export default function InstancesPage() {
         </div>
       </div>
 
+      {filteredInstances.length>visibleLimit&&<div className="flex items-center justify-between text-sm"><span>Showing {visibleLimit} of {filteredInstances.length} accounts</span><button type="button" onClick={()=>setVisibleLimit(limit=>limit+50)} className="profile-button">Show more accounts</button></div>}
       {/* ── Connect Modal ── */}
       <AnimatePresence>
         {connectModalOpen && (

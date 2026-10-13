@@ -35,9 +35,9 @@ function Brand() {
   return (
     <Link href="/" className={s.brand} aria-label="Whatsend home">
       <span className="ws-ogLogo" aria-hidden="true">
-        {/* Display the W mark from the original OG asset. */}
+        {/* Use the canonical Whatsend brand mark. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/og-image.jpg" alt="" width={1376} height={768} />
+        <img src="/icon.svg" alt="" width={32} height={32} />
       </span>
       Whatsend
     </Link>

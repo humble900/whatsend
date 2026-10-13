@@ -3,9 +3,9 @@
  * Example Input: ("Hi {{name}}!", { name: "John" }) -> "Hi John!"
  */
 export function injectVariables(text: string, variables: Record<string, string>): string {
-  return text.replace(/\{\{([^}]+)\}\}/g, (match, variableName) => {
-    const key = variableName.trim();
-    return variables[key] || match; // fallback to keeping the tag if missing
+  return text.replace(/\{\{([^}]+)\}\}|(?<!\{)\{(name|first_name|last_name|phone)\}(?!\})/g, (match, variableName, legacyName) => {
+    const key = (variableName || legacyName).trim();
+    return variables[key] ?? match;
   });
 }
 
@@ -14,7 +14,7 @@ export function injectVariables(text: string, variables: Record<string, string>)
  * Example Output: "Hi there! Are you looking for shirts?"
  */
 export function parseSpintax(text: string): string {
-  const spintaxRegex = /\{([^{}]+)\}/g;
+  const spintaxRegex = /\{([^{}]*\|[^{}]*)\}/g;
   
   // Recursively resolve nested spintax if necessary, but simple regex works for flat
   let parsedText = text;

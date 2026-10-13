@@ -185,19 +185,11 @@ export default function InboxPage() {
     if (!selected) return;
     let alive = true;
     let fetching = false;
+    let markingRead = false;
     const fetchMessages = async (initial = false) => {
       if (fetching || (!initial && document.hidden)) return;
       fetching = true;
       try {
-        for(const [id,item] of pendingSends.current){
-          if(item.conversation!==selected.id||item.instanceId!==selected.instanceId||item.message.status==='failed'||Date.now()-item.lastCheck<5000)continue;
-          item.lastCheck=Date.now();
-          try{
-            const response=await authenticatedFetch(`/api/messages/request/${id}`),status=await response.json();
-            item.message={...item.message,status:status.status,messageId:status.messageId||undefined,outboundId:status.id};
-            if(status.status==='uncertain'&&status.messageId)await authenticatedFetch(`/api/messages/${status.id}/reconcile`,{method:'POST'});
-          }catch{/* A temporary lookup failure never resubmits a message. */}
-        }
         const res = await authenticatedFetch(`/api/inbox/${encodeURIComponent(selected.id)}?instanceId=${selected.instanceId}`, {
           headers: { }
         });
@@ -205,8 +197,11 @@ export default function InboxPage() {
         if (alive && data.messages) {
           applyHistory(data.messages,selected);
           setMessageLoadError("");
-          if (data.messages.some((message: Message) => message.from === "them" && message.status !== "read")) {
-            await authenticatedFetch(`/api/inbox/${encodeURIComponent(selected.id)}/read`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ instanceId: selected.instanceId }) });
+          if (!markingRead && data.messages.some((message: Message) => message.from === "them" && message.status !== "read")) {
+            markingRead = true;
+            void authenticatedFetch(`/api/inbox/${encodeURIComponent(selected.id)}/read`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ instanceId: selected.instanceId }) })
+              .catch(() => { /* Retry on the next history poll; keep incoming messages visible. */ })
+              .finally(() => { markingRead = false; });
           }
         }
       } catch (err) {
@@ -220,30 +215,25 @@ export default function InboxPage() {
     return () => { alive = false; clearInterval(interval); };
   }, [selected]);
 
-  // Mark as read when conversation is opened
-  useEffect(() => {
-    if (!selected || selected.unread === 0) return;
-
-    const markAsRead = async () => {
-      try {
-        await authenticatedFetch(`/api/inbox/${selected.id}/read`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            },
-          body: JSON.stringify({ instanceId: selected.instanceId })
-        });
-        
-        // Optimistically update the conversation list unread count
-        setConversations(prev => 
-          prev.map(c => c.id === selected.id && c.instanceId === selected.instanceId ? { ...c, unread: 0 } : c)
-        );
-      } catch (err) {
-        console.error("Failed to mark as read:", err);
-      }
+  // Delivery lookups never block loading the conversation or receiving replies.
+  useEffect(()=>{
+    if(!selected)return;let alive=true,busy=false;const controller=new AbortController();
+    const checkSends=async()=>{
+      if(busy)return;const batch=[...pendingSends.current.entries()].filter(([,item])=>item.conversation===selected.id&&item.instanceId===selected.instanceId&&item.message.status!=='failed'&&Date.now()-item.lastCheck>=5000).slice(0,2);
+      if(!batch.length)return;busy=true;
+      await Promise.allSettled(batch.map(async([id,item])=>{
+        item.lastCheck=Date.now();
+        try{
+          const response=await authenticatedFetch('/api/messages/request/'+id,{signal:controller.signal}),status=await response.json();
+          if(!alive)return;
+          item.message={...item.message,status:status.status,messageId:status.messageId||undefined,outboundId:status.id};
+          setMessages(previous=>previous.map(message=>message.id===id?item.message:message));
+          if(status.status==='uncertain'&&status.messageId)await authenticatedFetch('/api/messages/'+status.id+'/reconcile',{method:'POST',signal:controller.signal});
+        }catch{/* Read-only verification continues later, without resending. */}
+      }));busy=false;
     };
-    markAsRead();
-  }, [selected]);
+    const timer=setInterval(()=>void checkSends(),3000);return()=>{alive=false;clearInterval(timer);controller.abort();};
+  },[selected]);
 
   const handleSendReply = async () => {
     if (!selected || isSending) return;

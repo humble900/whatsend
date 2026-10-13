@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Search, Plus, Play, Pause, Settings, Loader2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
+import {useRouter} from "next/navigation";
 
 interface Campaign {
   id: string;
@@ -25,6 +26,8 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export default function CampaignsListPage() {
+  const router=useRouter();
+  const [actionId,setActionId]=useState<string|null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -48,6 +51,12 @@ export default function CampaignsListPage() {
     fetchCampaigns();
   }, []);
 
+  const changeStatus=async(id:string,status:string)=>{
+    setActionId(id);setError('');
+    try{await authenticatedFetch('/api/campaigns/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});setCampaigns(previous=>previous.map(campaign=>campaign.id===id?{...campaign,status}:campaign));}
+    catch(cause){setError(cause instanceof Error?cause.message:'Could not update campaign.');}
+    finally{setActionId(null);}
+  };
   const filtered = campaigns.filter((c) => {
     const matchSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchStatus = statusFilter === "all" || c.status === statusFilter;
@@ -142,7 +151,7 @@ export default function CampaignsListPage() {
                 key={c.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
+                transition={{ duration: 0.15 }}
               >
                 {/* Desktop Row */}
                 <Link
@@ -181,15 +190,15 @@ export default function CampaignsListPage() {
 
                   <div className="col-span-2 flex justify-end items-center gap-1.5" onClick={(e) => e.preventDefault()}>
                     {c.status === "running" ? (
-                      <button className="p-1.5 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 rounded-lg transition-colors" title="Pause">
+                      <button className="p-1.5 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 rounded-lg transition-colors" title="Pause" aria-label={`Pause ${c.name}`} disabled={actionId===c.id} onClick={()=>void changeStatus(c.id,"paused")}>
                         <Pause className="w-4 h-4" />
                       </button>
-                    ) : (
-                      <button className="p-1.5 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors" title="Resume">
+                    ) : c.status === "paused" ? (
+                      <button className="p-1.5 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors" title="Resume" aria-label={`Resume ${c.name}`} disabled={actionId===c.id} onClick={()=>void changeStatus(c.id,"running")}>
                         <Play className="w-4 h-4" />
                       </button>
-                    )}
-                    <button className="p-1.5 text-muted-foreground hover:bg-secondary/50 rounded-lg transition-colors" title="Settings">
+                    ) : null}
+                    <button className="p-1.5 text-muted-foreground hover:bg-secondary/50 rounded-lg transition-colors" title="Settings" aria-label={`Options for ${c.name}`} onClick={()=>router.push(`/dashboard/campaigns/${c.id}?tab=options`)}>
                       <Settings className="w-4 h-4" />
                     </button>
                   </div>
