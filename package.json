@@ -9,6 +9,7 @@
     "lint": "eslint",
     "worker": "tsx src/worker.ts",
     "test:messaging": "tsx --test tests/messaging.test.ts",
+    "test:analytics": "node --env-file=.env.local --import tsx tests/analytics.integration.mjs",
     "check": "tsc --noEmit"
   },
   "dependencies": {
