@@ -5,7 +5,7 @@ export function isWithinSendingWindow(windows: SendingWindow[], timeZone: string
   return windows.some(({ start, end }) => start <= end ? hhmm >= start && hhmm < end : hhmm >= start || hhmm < end);
 }
 export function nextSendingWindow(windows: SendingWindow[], timeZone: string, now = new Date()) {
-  for (let minutes = 1; minutes <= 1441; minutes++) { const candidate = new Date(now.getTime() + minutes * 60000); if (isWithinSendingWindow(windows, timeZone, candidate)) return candidate.getTime(); }
+  for (let minutes = 1; minutes <= 2881; minutes++) { const candidate = new Date(now.getTime() + minutes * 60000); if (isWithinSendingWindow(windows, timeZone, candidate)) return candidate.getTime(); }
   return now.getTime() + 86400000;
 }
 export function campaignPacingMs(mode: string, min: number, max: number) { const lower = mode === "custom" ? min : 15; const upper = mode === "custom" ? max : 45; return Math.round((lower + Math.random() * (upper - lower)) * 1000); }

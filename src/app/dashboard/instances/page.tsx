@@ -113,6 +113,7 @@ export default function InstancesPage() {
   };
 
   const handleCreateInstance = async () => {
+    if (generating) return;
     if (!instanceLabel.trim()) {
       setError("Instance Label is required.");
       return;
@@ -163,6 +164,11 @@ export default function InstancesPage() {
   };
 
   const openConnect = (provider: string, initialName = "") => {
+    stopPolling();
+    setQrcodeBase64(null);
+    setPairingCode(null);
+    setCurrentInstanceDbId(null);
+    setError(null);
     setSelectedProvider(provider);
     setConnectionMethod("qr");
     setInstanceLabel(initialName);
@@ -564,7 +570,7 @@ export default function InstancesPage() {
                             <button 
                               onClick={handleCreateInstance}
                               disabled={generating || !instanceLabel}
-                              className="w-full bg-primary hover:bg-primary/90 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center transition-colors mt-4"
+                              className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-white py-2 px-3 rounded-md text-xs font-medium inline-flex items-center justify-center transition-colors mt-4"
                             >
                               {generating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <QrCode className="w-4 h-4 mr-2" />}
                               {generating ? "Generating QR..." : "Generate QR Code"}

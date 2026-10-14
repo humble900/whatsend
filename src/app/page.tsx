@@ -72,9 +72,9 @@ export default function LandingPage() {
               <a href="#how-it-works" className={s.secondary}>How it works</a>
             </div>
           </div>
-          <CampaignPreview />
+          <figure className="ws-human-hero"><img src="https://images.pexels.com/photos/5414041/pexels-photo-5414041.jpeg?auto=compress&cs=tinysrgb&w=1000" width="832" height="1000" fetchPriority="high" alt="A florist speaking with a customer in her shop"/><figcaption>Every sale starts with a conversation.</figcaption><div className="ws-example-chat" aria-label="Illustrative customer conversation"><small>Example conversation</small><p>Hi! Is the bouquet available for delivery today?</p><p>Yes — what time works for you?</p></div></figure>
         </section>
-        <section id="features" className={s.section}>
+        <section className="ws-product-story"><div><span>Your offer. Their next order.</span><h2>From a customer list<br/>to a real conversation.</h2><p>Write an offer, choose your WhatsApp numbers, and send it to customers who want to hear from you. Keep the replies together so your team can help buyers complete their order.</p><a href="#how-it-works">See how it works <ArrowRight size={16}/></a></div><CampaignPreview/></section><section id="features" className={s.section}>
           <div className={s.sectionHeading}>
             <div><h2>Send your offer to<br />the customers you want to reach.</h2></div>
             <p>Manage your contact lists, messages,<br />and campaign results in one place.</p>
@@ -117,7 +117,7 @@ export default function LandingPage() {
       <footer className={s.footer}>
         <div><Brand /><p>WhatsApp campaigns for your business.</p></div>
         <nav aria-label="Footer navigation"><a href="#features">Features</a><a href="#faq">FAQs</a><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></nav>
-        <p>© 2026 Whatsend</p>
+        <p>© 2026 Whatsend · Photo by <a href="https://www.pexels.com/photo/smiling-female-florist-talking-on-phone-in-floristry-shop-5414041/" target="_blank" rel="noreferrer">Amina Filkins</a></p>
       </footer>
     </div>
   );

@@ -59,3 +59,11 @@
 @media(max-width:1000px){.campaign-options-layout{grid-template-columns:minmax(0,1fr) 220px;gap:14px}.campaign-option-card,.campaign-plan-card{padding:16px}}
 @media(max-width:720px){.campaign-options-layout{display:flex;flex-direction:column;gap:16px}.campaign-options-main,.campaign-plan-card{width:100%}.campaign-plan-card{position:static}.campaign-option-heading{gap:8px}.campaign-sender-row{padding:10px;gap:9px}.campaign-limit-setting{align-items:start;gap:12px}.campaign-limit-setting input{width:72px;flex-shrink:0}.campaign-sender-status small{max-width:95px}.campaign-selection-actions{gap:10px}.campaign-plan-card dl{display:grid;grid-template-columns:1fr 1fr;gap:15px}.campaign-plan-card dl>div{display:block}.campaign-plan-card dd{margin-top:5px}.campaign-rule-row{gap:14px}}
 @media(max-width:720px){.campaign-sender-status small{display:none}.campaign-sender-identity small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+/* Compact actions keep the content primary; touch controls retain usable targets. */
+.app-shell .profile-button,.app-shell .campaign-editor-button{min-height:34px;padding:7px 12px;font-size:12px;font-weight:500;border-radius:6px;width:auto;box-shadow:none}
+.app-shell button[class*="bg-primary"],.app-shell button[class*="bg-green-600"],.app-shell button[class*="bg-emerald"]{min-height:34px;padding:7px 12px;font-size:12px;font-weight:500;border-radius:6px;box-shadow:none}
+.app-shell button[class*="py-3"],.app-shell button[class*="py-2.5"]{padding-top:7px;padding-bottom:7px;font-size:12px;border-radius:6px}
+.app-shell button[class*="shadow"]{box-shadow:none}
+.app-shell button:focus-visible{outline:2px solid #16845b;outline-offset:3px}
+.timezone-selection{margin-bottom:20px}.timezone-selection .profile-field{gap:7px}.timezone-selection select{width:100%;padding:10px;border:1px solid #dde4da;border-radius:6px;background:#fff;font-size:13px}.timezone-selection p{font-size:11px;line-height:1.7;color:#62705e;margin:-8px 0 10px;max-width:560px}
+@media(pointer:coarse){.app-shell .profile-button,.app-shell .campaign-editor-button,.app-shell button[class*="bg-primary"],.app-shell button[class*="bg-green-600"]{min-height:44px}}

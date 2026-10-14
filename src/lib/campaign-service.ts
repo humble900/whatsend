@@ -47,20 +47,21 @@ export async function getCampaignContext(id:string,tenantId:string){
  const campaign=await db.query.campaigns.findFirst({where:and(eq(campaigns.id,id),eq(campaigns.tenantId,tenantId)),columns:{id:true,timezone:true}});
  if(!campaign)throw new MessagingError('Campaign was not found.',404);return campaign;
 }
-export async function campaignAnalytics(id: string, tenantId: string, database: Pick<typeof db,'select'> = db) {
+export async function campaignAnalytics(id: string, tenantId: string, database: Pick<typeof db,'select'|'execute'> = db, includeReplies=true) {
   const rows = await database.select({ status: outboundMessages.status, count: sql<number>`count(*)::int` }).from(outboundMessages).where(and(eq(outboundMessages.campaignId, id), eq(outboundMessages.tenantId, tenantId))).groupBy(outboundMessages.status);
+  const replyRows=includeReplies?await database.execute(sql`select count(*)::int as count from outbound_messages o where o.tenant_id=${tenantId} and o.campaign_id=${id} and o.sent_at is not null and exists(select 1 from messages m where m.tenant_id=o.tenant_id and m.instance_id=o.instance_id and m.remote_jid=o.remote_jid and m.is_from_me=false and m.message_type<>'reaction' and m.created_at>o.sent_at)`):[];
   const counts = Object.fromEntries(rows.map(row => [row.status, row.count]));
   const total = rows.reduce((sum, row) => sum + row.count, 0);
   const sent = (counts.sent || 0) + (counts.delivered || 0) + (counts.read || 0);
   const processed = sent + (counts.failed || 0) + (counts.skipped || 0) + (counts.cancelled || 0);
-  return { total, sent, failed: counts.failed || 0, skipped: counts.skipped || 0, uncertain: counts.uncertain || 0, delivered: (counts.delivered || 0) + (counts.read || 0), read: counts.read || 0, queued: (counts.queued || 0) + (counts.sending || 0), processed, progress: total ? Math.round(processed / total * 100) : 0 };
+  return { total, sent, replied:Number(replyRows[0]?.count||0), cancelled:counts.cancelled||0, failed: counts.failed || 0, skipped: counts.skipped || 0, uncertain: counts.uncertain || 0, delivered: (counts.delivered || 0) + (counts.read || 0), read: counts.read || 0, queued: (counts.queued || 0) + (counts.sending || 0), processed, progress: total ? Math.round(processed / total * 100) : 0 };
 }
 export async function refreshCampaignProgress(id: string, tenantId: string) {
   await db.transaction(async tx=>{
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${id}))`);
     const campaign=await tx.query.campaigns.findFirst({where:and(eq(campaigns.id,id),eq(campaigns.tenantId,tenantId)),columns:{status:true}});
     if(!campaign)throw new MessagingError('Campaign was not found.',404);
-    const analytics=await campaignAnalytics(id,tenantId,tx);
+    const analytics=await campaignAnalytics(id,tenantId,tx,false);
     await tx.update(campaigns).set({contactsProcessed:analytics.processed,...(analytics.uncertain&&campaign.status==='running'?{status:'paused'}:analytics.total&&analytics.processed===analytics.total&&campaign.status!=='cancelled'?{status:'completed',completedAt:new Date()}:{})}).where(and(eq(campaigns.id,id),eq(campaigns.tenantId,tenantId)));
   });
 }

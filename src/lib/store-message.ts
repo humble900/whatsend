@@ -27,8 +27,8 @@ export async function storeMessage(values: typeof messages.$inferInsert) {
     return stored;
   });
 }
-export async function storeReceipt(tenantId: string, instanceId: string, messageId: string, status: string) {
-  await db.transaction(async tx => {
+export async function storeReceipt(tenantId: string, instanceId: string, messageId: string, status: string, database:Pick<typeof db,'transaction'>=db) {
+  await database.transaction(async tx => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`${tenantId}:${instanceId}:${messageId}`}))`);
     const scope = and(eq(messageReceipts.tenantId, tenantId), eq(messageReceipts.instanceId, instanceId), eq(messageReceipts.evolutionMessageId, messageId));
     const existing = await tx.query.messageReceipts.findFirst({ where: scope });

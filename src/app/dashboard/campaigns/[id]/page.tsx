@@ -49,7 +49,7 @@ interface Campaign {
   createdAt: string;
   startedAt?: string;
   assignedAccounts: { id: string; name: string; phoneNumber: string | null; status: string }[];
-  analytics: { total: number; sent: number; failed: number; queued: number; progress: number };
+  analytics: { total: number; sent: number; delivered:number; read:number; replied:number; skipped:number; cancelled:number; uncertain:number; processed:number; failed: number; queued: number; progress: number };
 }
 
 // ─── Lead Status Badges ───────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ const MSG_STATUS: Record<string, { label: string; cls: string }> = {
   sent:      { label: "Sent",      cls: "text-green-600" },
   delivered: { label: "Delivered", cls: "text-blue-600" },
   read:      { label: "Read",      cls: "text-blue-700" },
-  failed:    { label: "Failed",    cls: "text-red-500" },
+  failed:    { label: "Failed", cls: "text-red-500" },
   queued:    { label: "Queued",    cls: "text-amber-600" },
 };
 
@@ -311,7 +311,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 <div className="mb-6 p-5 rounded-xl border border-gray-100 bg-gray-50">
                   <div className="flex justify-between text-sm mb-3">
                     <span className="font-semibold text-gray-700">Campaign Progress</span>
-                    <span className="text-gray-400">{analytics.sent + analytics.failed} / {analytics.total} processed</span>
+                    <span className="text-gray-400">{analytics.processed} / {analytics.total} processed</span>
                   </div>
                   <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                     <motion.div
@@ -329,6 +329,11 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 {[
                   { label: "Total Leads", value: analytics.total || campaign.totalContacts, icon: Users, cls: "text-gray-900" },
                   { label: "Sent",        value: analytics.sent,   icon: Send,       cls: "text-green-600" },
+                  { label: "Delivered", value: analytics.delivered, icon: CheckCircle2, cls: "text-green-600" },
+                  { label: "Read", value: analytics.read, icon: CheckCircle2, cls: "text-green-600" },
+                  { label: "Replied", value: analytics.replied, icon: MessageSquare, cls: "text-green-600" },
+                  { label: "Skipped / cancelled", value: analytics.skipped+analytics.cancelled, icon: Clock, cls: "text-gray-500" },
+                  { label: "Needs review", value: analytics.uncertain, icon: AlertTriangle, cls: "text-amber-600" },
                   { label: "Failed",      value: analytics.failed, icon: XCircle,    cls: "text-red-500" },
                   { label: "Queued",      value: analytics.queued, icon: Clock,      cls: "text-amber-600" },
                 ].map(({ label, value, icon: Icon, cls }) => (
@@ -349,6 +354,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                     ["Delay Mode", campaign.delayMode === "smart" ? "Smart (15–45s random)" : `Custom (${campaign.customDelayMin}–${campaign.customDelayMax}s)`],
                     ["Daily Limit", `${campaign.dailyLimitPerAccount} msg/account`],
                     ["Variant Mode", campaign.variantMode.replace("_", " ")],
+                    ["Time zone", campaign.timezone],
                     ["Created", new Date(campaign.createdAt).toLocaleDateString()],
                   ].map(([k, v]) => (
                     <div key={k} className="flex justify-between text-sm">
