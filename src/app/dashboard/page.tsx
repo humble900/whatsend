@@ -357,7 +357,7 @@ export default function DashboardOverview() {
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
                     <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-                    {c.contactsProcessed.toLocaleString()} / {c.totalContacts.toLocaleString()} sent
+                    {c.contactsProcessed.toLocaleString()} / {c.totalContacts.toLocaleString()} processed
                   </div>
                   {c.totalContacts > 0 && (
                     <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
