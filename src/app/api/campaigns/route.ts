@@ -4,11 +4,11 @@ import { requireAuthAndTenant } from "@/lib/auth";
 import { authenticationError } from "@/lib/api-error";
 import { db } from "@/db";
 import { campaigns, campaignAccounts, campaignLeads, whatsappInstances } from "@/db/schema";
-import { and, eq, inArray, desc } from "drizzle-orm";
+import { and, eq, inArray, desc, sql } from "drizzle-orm";
 import { campaignEditSchema, campaignLeadSchema, launchCampaign } from "@/lib/campaign-service";
 import { MessagingError } from "@/lib/outbound-service";
 export async function GET(req: Request) {
- try {const {tenantId}=await requireAuthAndTenant(req.headers.get("Authorization"));return NextResponse.json({campaigns:await db.query.campaigns.findMany({where:eq(campaigns.tenantId,tenantId),orderBy:[desc(campaigns.createdAt)]})});}
+ try {const {tenantId}=await requireAuthAndTenant(req.headers.get("Authorization"));const [list,totals]=await Promise.all([db.query.campaigns.findMany({where:eq(campaigns.tenantId,tenantId),orderBy:[desc(campaigns.createdAt)],columns:{id:true,name:true,status:true,totalContacts:true,contactsProcessed:true,dailyLimitPerAccount:true,createdAt:true}}),db.execute(sql`select campaign_id,count(*)::int as sent from outbound_messages where tenant_id=${tenantId} and campaign_id is not null and status in ('sent','delivered','read') group by campaign_id`)]);const sent=new Map(totals.map(row=>[row.campaign_id,Number(row.sent)]));return NextResponse.json({campaigns:list.map(campaign=>({...campaign,messagesSent:sent.get(campaign.id)||0}))});}
  catch(error){return authenticationError(error)||NextResponse.json({error:"Could not load campaigns."},{status:500});}
 }
 export async function POST(req: Request) {

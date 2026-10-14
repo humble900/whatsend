@@ -44,7 +44,7 @@ export async function getCampaign(id: string, tenantId: string, database: Pick<t
 }
 export async function getCampaignContext(id:string,tenantId:string){
  z.uuid().parse(id);
- const campaign=await db.query.campaigns.findFirst({where:and(eq(campaigns.id,id),eq(campaigns.tenantId,tenantId)),columns:{id:true,timezone:true}});
+ const campaign=await db.query.campaigns.findFirst({where:and(eq(campaigns.id,id),eq(campaigns.tenantId,tenantId)),columns:{id:true,timezone:true,status:true}});
  if(!campaign)throw new MessagingError('Campaign was not found.',404);return campaign;
 }
 export async function campaignAnalytics(id: string, tenantId: string, database: Pick<typeof db,'select'|'execute'> = db, includeReplies=true) {

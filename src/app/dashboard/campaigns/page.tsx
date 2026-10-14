@@ -13,6 +13,7 @@ interface Campaign {
   status: string;
   totalContacts: number;
   contactsProcessed: number;
+  messagesSent: number;
   dailyLimitPerAccount: number;
   createdAt: string;
 }
@@ -173,7 +174,7 @@ export default function CampaignsListPage() {
 
                   <div className="col-span-3 px-4 space-y-1.5">
                     <div className="flex justify-between text-xs font-mono font-semibold">
-                      <span>{c.contactsProcessed.toLocaleString()} sent</span>
+                      <span>{c.messagesSent.toLocaleString()} sent</span>
                       <span>{progress(c)}%</span>
                     </div>
                     <div className="w-full bg-secondary h-1.5 rounded-full overflow-hidden">
@@ -235,7 +236,7 @@ export default function CampaignsListPage() {
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-secondary/30 rounded-lg p-2.5 text-center">
                       <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Sent</div>
-                      <div className="text-sm font-mono font-bold">{c.contactsProcessed.toLocaleString()}</div>
+                      <div className="text-sm font-mono font-bold">{c.messagesSent.toLocaleString()}</div>
                     </div>
                     <div className="bg-secondary/30 rounded-lg p-2.5 text-center">
                       <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Total</div>

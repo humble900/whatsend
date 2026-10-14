@@ -136,6 +136,12 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
   }, [id,tab]);
 
   useEffect(() => { void fetchCampaign(); }, [fetchCampaign]);
+  useEffect(()=>{
+    if(tab!=='analytics'||!campaign||campaign.status==='draft')return;
+    let disposed=false,pending=false;
+    const refresh=async()=>{if(pending||document.hidden)return;pending=true;try{const response=await authenticatedFetch(`/api/campaigns/${id}/analytics`);const data=await response.json();if(response.ok&&!disposed)setCampaign(previous=>previous?{...previous,analytics:data.analytics,status:data.status}:previous);}catch{/* Preserve the latest results while the network recovers. */}finally{pending=false;}};
+    const timer=setInterval(()=>void refresh(),5000);return()=>{disposed=true;clearInterval(timer);};
+  },[id,tab,campaign?.status]);
 
   const handleStatusChange = async (newStatus: string) => {
     setActionLoading(true);
@@ -602,6 +608,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
               {campaign.status !== "draft" && <div className="grid sm:grid-cols-2 gap-4">
                 <div className="p-5 rounded-xl border border-gray-100 bg-white shadow-sm space-y-3">
                   <p className="font-semibold text-sm text-gray-800">Sending Windows</p>
+                  <p className="text-xs text-gray-500">Time zone: {campaign.timezone}</p>
                   {campaign.sendingWindows.map((w, i) => (
                     <div key={i} className="flex items-center gap-3 text-sm p-3 bg-gray-50 rounded-lg border border-gray-100">
                       <Clock className="w-4 h-4 text-green-500 shrink-0" />
